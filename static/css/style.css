@@ -1,0 +1,73 @@
+/* Custom CSS to decrease the width of the date picker field */
+.datepicker {
+    max-width: 150px;
+    /* Decrease the width */
+    margin: auto;
+    /* Center the date picker */
+}
+
+/* CSS for the folder icon */
+.folder-icon {
+    width: 40px;
+    /* Adjust the width of the folder icon */
+    height: 40px;
+    /* Adjust the height of the folder icon */
+    margin-right: 5px;
+    /* Add margin to separate the icon from the folder name */
+}
+
+/* Custom CSS to remove bullet points from list items */
+#millFolders ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+/* Additional CSS for roll ID folders */
+.roll-id-folder {
+    margin-left: 20px;
+    /* Indent roll ID folders */
+}
+
+/* CSS for folder icons in roll ID folders */
+.roll-id-folder img {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+}
+
+/* CSS for label folders */
+.label-folder {
+    margin-left: 20px;
+    /* Indent label folders */
+}
+
+/* CSS for folder icons in label folders */
+.label-folder img {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+}
+
+/* CSS for displaying images */
+.image-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    /* Center the images horizontally */
+}
+
+.image-container img {
+    margin: 5px;
+    max-width: calc(100% / 8 - 20px);
+    /* Adjust the number of images per row by changing the denominator */
+    max-height: 250px;
+    /* Maintain aspect ratio */
+}
+
+
+/* Add this CSS to your style.css file */
+.modal-xl {
+    max-width: 60%;
+    max-height: 60%;
+    /* Adjust the maximum width of the modal */
+}
