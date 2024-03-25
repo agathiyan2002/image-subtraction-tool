@@ -1,15 +1,104 @@
+from db import Database
 import os
 import base64
 import json
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 import psycopg2
 import shutil
 import json
+from datetime import datetime
 
 app = Flask(__name__)
 
+
+db_instance = Database(
+    source_db_config={
+        "user": "postgres",
+        "password": "soft",
+        "host": "localhost",
+        "port": "5432",
+        "database": "kpr-2",
+    },
+    destination_db_config={
+        "user": "postgres",
+        "password": "soft",
+        "host": "localhost",
+        "port": "5432",
+        "database": "main",
+    },
+)
+
+
 # Define the destination folder for saving images
 destination_folder = os.path.join("static", "temp")
+
+
+def count_fp_tp_images():
+    validation_folder = r"C:\Users\91984\Desktop\validation"
+    mill_folders = os.listdir(validation_folder)
+    results = []
+
+    for mill_name in mill_folders:
+        mill_path = os.path.join(validation_folder, mill_name)
+        if os.path.isdir(mill_path):
+            roll_numbers = os.listdir(mill_path)
+            mill_result = {mill_name: []}
+
+            for roll_number in roll_numbers:
+                roll_path = os.path.join(mill_path, roll_number)
+                if os.path.isdir(roll_path):
+                    dates = os.listdir(roll_path)
+                    roll_result = {roll_number: []}
+
+                    for date in dates:
+                        date_path = os.path.join(roll_path, date)
+                        if os.path.isdir(date_path):
+                            label_folders = os.listdir(date_path)
+                            date_result = {date: []}
+
+                            for label in label_folders:
+                                label_path = os.path.join(date_path, label)
+                                if os.path.isdir(label_path):
+                                    fp_folder = os.path.join(label_path, "fp")
+                                    tp_folder = os.path.join(label_path, "tp")
+
+                                    # Check if 'fp' and 'tp' folders exist
+                                    if os.path.exists(fp_folder) or os.path.exists(
+                                        tp_folder
+                                    ):
+                                        fp_count = (
+                                            len(os.listdir(fp_folder))
+                                            if os.path.exists(fp_folder)
+                                            else 0
+                                        )
+                                        tp_count = (
+                                            len(os.listdir(tp_folder))
+                                            if os.path.exists(tp_folder)
+                                            else 0
+                                        )
+                                        label_result = {
+                                            "label": label,
+                                            "fp": fp_count,
+                                            "tp": tp_count,
+                                        }
+                                        date_result[date].append(label_result)
+
+                            if date_result[
+                                date
+                            ]:  # Check if date contains label folders with fp or tp folders
+                                roll_result[roll_number].append(date_result)
+
+                    if roll_result[
+                        roll_number
+                    ]:  # Check if roll number has any dates with label folders containing fp or tp
+                        mill_result[mill_name].append(roll_result)
+
+            if mill_result[
+                mill_name
+            ]:  # Check if mill has any roll numbers with dates containing label folders with fp or tp
+                results.append(mill_result)
+
+    return results
 
 
 # Function to fetch roll details from the database based on the date
@@ -140,6 +229,21 @@ def decrypt_and_save_images(date_folder, database_name, roll_number, date):
     return images
 
 
+@app.route("/update-records", methods=["POST"])
+def update_records_api():
+    if request.method == "POST":
+        # Extract updated record data from the request
+        updated_record = request.get_json()
+
+        # Call the update_records function with the updated_record data
+        success = db_instance.update_records(updated_record)
+
+        if success:
+            return jsonify({"message": "Record updated successfully"})
+        else:
+            return jsonify({"error": "Failed to update record"}), 500
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     roll_details = []  # Initialize roll details list
@@ -193,6 +297,38 @@ def move_image():
         return "Image moved successfully."
     except Exception as e:
         return str(e), 500
+
+
+@app.route("/dashboard", methods=["GET", "POST"])
+def dashboard():
+    if request.method == "POST":
+        selected_date = request.form.get("date")
+        print("Selected Date:", selected_date)
+
+        defect_data, rotation_data, avg_rpm, machine_program_data, alarm_status = (
+            db_instance.fetch_defect_data(selected_date)
+        )
+        print("revolution or rotation_data", rotation_data)
+        print("alarm_status", alarm_status)
+        print("machine_program_data", machine_program_data)
+        k = db_instance.insert_data(
+            selected_date,
+            defect_data,
+            rotation_data,
+            avg_rpm,
+            machine_program_data,
+            alarm_status,
+        )
+        records = db_instance.fetch_records_by_date(selected_date)
+        formatted_records = [
+            (date.strftime("%Y-%m-%d"), *rest) for date, *rest in records
+        ]
+
+        # print(records)
+        return jsonify(formatted_records)
+
+    else:
+        return render_template("dashboard.html")
 
 
 if __name__ == "__main__":

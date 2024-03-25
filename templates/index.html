@@ -9,11 +9,19 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css"
         rel="stylesheet">
     <link rel="stylesheet" href="static/css/style.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+
 </head>
 
 <body>
     <div class="container-fluid mt-5">
-        <!-- Decrease the date picker field width and center it -->
+        <div class="row justify-content-end pr-4">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-link text-dark mr-3 dashboard-link">
+                <i class="fas fa-user mr-1"></i> Dashboard
+            </a>
+        </div>
+
         <div class="row justify-content-center">
             <div class="col-auto">
                 <h1>Image subtraction tool</h1><br>

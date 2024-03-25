@@ -71,3 +71,15 @@
     max-height: 60%;
     /* Adjust the maximum width of the modal */
 }
+
+.dashboard-link {
+    font-size: 18px;
+    /* Adjust the font size as needed */
+    text-decoration: none;
+    /* Remove underline */
+}
+
+.dashboard-link:hover {
+    color: #007bff;
+    /* Change color on hover */
+}
