@@ -7,6 +7,10 @@ import psycopg2
 import shutil
 import json
 from datetime import datetime
+from restore_db_files import DBRestorer
+import schedule
+import threading
+import time
 
 app = Flask(__name__)
 
@@ -305,20 +309,8 @@ def dashboard():
         selected_date = request.form.get("date")
         print("Selected Date:", selected_date)
 
-        defect_data, rotation_data, avg_rpm, machine_program_data, alarm_status = (
-            db_instance.fetch_defect_data(selected_date)
-        )
-        print("revolution or rotation_data", rotation_data)
-        print("alarm_status", alarm_status)
-        print("machine_program_data", machine_program_data)
-        k = db_instance.insert_data(
-            selected_date,
-            defect_data,
-            rotation_data,
-            avg_rpm,
-            machine_program_data,
-            alarm_status,
-        )
+        db_instance.fetch_all_databases_data(selected_date)
+
         records = db_instance.fetch_records_by_date(selected_date)
         formatted_records = [
             (date.strftime("%Y-%m-%d"), *rest) for date, *rest in records
@@ -331,5 +323,29 @@ def dashboard():
         return render_template("dashboard.html")
 
 
+def restore_databases_daily():
+    db_folder_path = "C:/Users/91984/Desktop/db"
+    db_host = "localhost"
+    db_port = "5432"
+    db_user = "postgres"
+    os.environ["PGPASSWORD"] = "soft"  # Replace with your actual password
+    db_restore_instance = DBRestorer(db_folder_path, db_host, db_port, db_user)
+    print("Restoring databases...")
+    db_restore_instance.restore_databases()
+    print("Databases restored.")
+
+
+# schedule.every().day.at("00:00").do(restore_databases_daily)
+# schedule.every(2).minutes.do(restore_databases_daily)
+
+
+def run_scheduler():
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+
+
 if __name__ == "__main__":
+    # scheduler_thread = threading.Thread(target=run_scheduler)
+    # scheduler_thread.start()
     app.run(debug=True, host="0.0.0.0", port="5000")

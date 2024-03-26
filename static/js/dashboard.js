@@ -64,7 +64,7 @@ function fetchMillDetails() {
                 $('#dashboardTable tbody').append(row);
             });
             // Dynamically adjust cell dimensions
-            adjustCellDimensions();
+            // adjustCellDimensions();
         },
         error: function (error) {
             console.error('Error fetching mill details:', error);
@@ -135,6 +135,7 @@ function saveChanges() {
             alert('Failed to update record. Please try again.');
         }
     });
+    fetchMillDetails();
 }
 
 

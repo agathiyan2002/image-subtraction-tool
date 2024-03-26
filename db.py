@@ -1,6 +1,7 @@
 import json
 import os
 import psycopg2
+import logging
 
 
 class Database:
@@ -8,13 +9,42 @@ class Database:
         self.source_db_config = source_db_config
         self.destination_db_config = destination_db_config
 
-    def fetch_defect_data(self, selected_date):
+    def fetch_all_databases_data(self, selected_date):
         try:
-            # Connect to the source database (kpr-2)
+            # Connect to the PostgreSQL server
             source_connection = psycopg2.connect(**self.source_db_config)
             source_cursor = source_connection.cursor()
 
-            # Fetch defect data from the defect_details table for the selected date
+            # Get a list of all non-template databases excluding 'postgres' and 'main'
+            source_cursor.execute(
+                "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main');"
+            )
+
+            # Fetch all database names
+            database_names = [row[0] for row in source_cursor.fetchall()]
+            # print(database_names)  # Print the fetched database names
+
+            # Iterate over each database and fetch data
+            for db_name in database_names:
+                print("Fetching data from database:", db_name)
+                self.fetch_defect_data(selected_date, db_name)
+
+        except psycopg2.Error as e:
+            print("Error fetching data from all databases:", e)
+
+        finally:
+            if source_connection:
+                source_cursor.close()
+                source_connection.close()
+
+    def fetch_defect_data(self, selected_date, db_name):
+        try:
+            # Connect to the source database
+            self.source_db_config["database"] = db_name
+            source_connection = psycopg2.connect(**self.source_db_config)
+            source_cursor = source_connection.cursor()
+
+            # Fetch defect data from the defect_details table
             source_cursor.execute(
                 "SELECT defecttyp_id, timestamp FROM defect_details WHERE DATE(timestamp) = %s",
                 (selected_date,),
@@ -26,7 +56,6 @@ class Database:
                 "SELECT COUNT(rotation) FROM rotation_details WHERE DATE(timestamp) = %s AND rotation IS NOT NULL",
                 (selected_date,),
             )
-
             rotation_data = source_cursor.fetchall()
 
             # Fetch average RPM from rotation_details for the selected date
@@ -55,19 +84,38 @@ class Database:
                 "SELECT COUNT(alarmtyp_id) FROM alarm_status WHERE DATE(timestamp) = %s AND alarmtyp_id IS NOT NULL",
                 (selected_date,),
             )
-
             num_alarm_types = source_cursor.fetchone()[0]
+            # call insert_data function properly
+            logging.basicConfig(
+                filename="log.txt",
+                level=logging.INFO,
+                format="%(asctime)s - %(levelname)s - %(message)s",
+            )
 
-            return (
+            # Your print statements
+            logging.info("######################################")
+            logging.info("db name: %s", db_name)
+            logging.info("Selected Date: %s", selected_date)
+            logging.info("Defect Data: %s", len(defect_data))
+            logging.info("Rotation Data: %s", rotation_data)
+            logging.info("Average RPM: %s", avg_rpm)
+            logging.info("Machine Program Data: %s", machine_program_data)
+            logging.info("Number of Alarm Types: %s", num_alarm_types)
+            logging.info("Database Name: %s", db_name)
+            logging.info("######################################")
+
+            self.insert_data(
+                selected_date,
                 defect_data,
                 rotation_data,
                 avg_rpm,
                 machine_program_data,
                 num_alarm_types,
+                db_name,
             )
 
         except psycopg2.Error as e:
-            print("Error fetching defect data:", e)
+            print(f"Error fetching data from database {db_name}:", e)
             return None, None, None, None, None
 
         finally:
@@ -83,7 +131,9 @@ class Database:
         avg_rpm,
         machine_program_data,
         alarm_status,
+        db_name,
     ):
+        # print("insder insde db name :", db_name)
         try:
             # Connect to the destination database (main)
             destination_connection = psycopg2.connect(**self.destination_db_config)
@@ -137,30 +187,28 @@ class Database:
             fabric_types_json = json.dumps(fabric_types)
             knit_types_json = json.dumps(knit_types)
 
-            # Construct the UPSERT SQL query
-            sql_query = """
-                INSERT INTO kpr2 (
-                    date, defect_name, no_of_revolutions, avg_rpm, gsm,
-                    guage, loop_length, fabric_material, machine_rolling_type, total_alarms
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                ) ON CONFLICT (date) DO UPDATE SET
-                    defect_name = excluded.defect_name,
-                    no_of_revolutions = excluded.no_of_revolutions,
-                    avg_rpm = excluded.avg_rpm,
-                    gsm = excluded.gsm,
-                    guage = excluded.guage,
-                    loop_length = excluded.loop_length,
-                    fabric_material = excluded.fabric_material,
-                    machine_rolling_type = excluded.machine_rolling_type,
-                    total_alarms = excluded.total_alarms;
-            """
-
+            sql_query = """INSERT INTO mill_details (
+            date, mill_name, defect_name, no_of_revolutions, avg_rpm, gsm,
+            guage, loop_length, fabric_material, machine_rolling_type, total_alarms
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+        ) ON CONFLICT (date, mill_name) DO UPDATE SET
+            defect_name = EXCLUDED.defect_name,
+            no_of_revolutions = EXCLUDED.no_of_revolutions,
+            avg_rpm = EXCLUDED.avg_rpm,
+            gsm = EXCLUDED.gsm,
+            guage = EXCLUDED.guage,
+            loop_length = EXCLUDED.loop_length,
+            fabric_material = EXCLUDED.fabric_material,
+            machine_rolling_type = EXCLUDED.machine_rolling_type,
+            total_alarms = EXCLUDED.total_alarms;
+"""
             # Execute the UPSERT SQL query
             destination_cursor.execute(
                 sql_query,
                 (
                     selected_date,
+                    db_name,
                     defect_counts_json,
                     rotation_data,
                     avg_rpm,
@@ -192,10 +240,12 @@ class Database:
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
 
-            # Fetch records from the kpr2 table for the selected date
+            # Fetch records from the mill_details table for the selected date, excluding the id column
             destination_cursor.execute(
-                "SELECT * FROM kpr2 WHERE date = %s", (selected_date,)
+                "SELECT date, mill_name, machine_brand, machine_dia, model_name, machine_name, avg_rpm, feeder_type, guage, gsm, loop_length, fabric_material, machine_rolling_type, status, internet_status, uptime, no_of_revolutions, defect_name, total_alarms, true_positive, name_mismatch, false_positive, fabric_parameters, comments, customer_complaints_requirements, cdc_last_done, latest_action FROM mill_details WHERE date = %s",
+                (selected_date,),
             )
+
             records = destination_cursor.fetchall()
 
             return records
@@ -244,8 +294,8 @@ class Database:
             latestAction = updated_record.get("latestAction")
 
             sql_query = """
-                UPDATE kpr2
-                SET mill_name = %s, 
+                UPDATE mill_details
+                SET 
                     machine_brand = %s,
                     machine_dia = %s,
                     model_name = %s,
@@ -271,14 +321,13 @@ class Database:
                     customer_complaints_requirements = %s,
                     cdc_last_done = %s,
                     latest_action = %s
-                WHERE date = %s
+                WHERE date = %s And mill_name=%s
             """
 
             # Execute the SQL query with the updated data
             destination_cursor.execute(
                 sql_query,
                 (
-                    mill_name,
                     machine_brand,
                     machineDia,
                     modelName,
@@ -305,6 +354,7 @@ class Database:
                     cdc,
                     latestAction,
                     date,
+                    mill_name,
                 ),
             )
 
