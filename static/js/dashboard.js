@@ -72,15 +72,19 @@ function fetchMillDetails() {
     });
 }
 
-// Function to initialize the page with records for the current date
 function initializeDashboard() {
-    // Get the current date
-    var currentDate = new Date().toISOString().slice(0, 10);
-    // Set the date picker value to the current date
-    $('#selectedDate').val(currentDate);
-    // Fetch records for the current date
+    // Get yesterday's date
+    var yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    var yesterdayDate = yesterday.toISOString().slice(0, 10);
+
+    // Set the date picker value to yesterday's date
+    $('#selectedDate').val(yesterdayDate);
+
+    // Fetch records for yesterday's date
     fetchMillDetails();
 }
+
 
 function saveChanges() {
     // Extract the updated data from the edit modal fields

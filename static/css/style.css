@@ -83,3 +83,13 @@
     color: #007bff;
     /* Change color on hover */
 }
+
+
+/* Custom CSS for bootbox dialog */
+.custom-dialog .modal-dialog {
+    max-width: 40%; /* Set the maximum width of the dialog box */
+}
+
+.custom-dialog .modal-body {
+    max-height: none; /* Prevent body content from scrolling */
+}

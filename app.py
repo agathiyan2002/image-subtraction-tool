@@ -11,6 +11,9 @@ from restore_db_files import DBRestorer
 import schedule
 import threading
 import time
+from ImageCounter import (
+    ImageCounter,
+)
 
 app = Flask(__name__)
 
@@ -37,76 +40,9 @@ db_instance = Database(
 destination_folder = os.path.join("static", "temp")
 
 
-def count_fp_tp_images():
-    validation_folder = r"C:\Users\91984\Desktop\validation"
-    mill_folders = os.listdir(validation_folder)
-    results = []
-
-    for mill_name in mill_folders:
-        mill_path = os.path.join(validation_folder, mill_name)
-        if os.path.isdir(mill_path):
-            roll_numbers = os.listdir(mill_path)
-            mill_result = {mill_name: []}
-
-            for roll_number in roll_numbers:
-                roll_path = os.path.join(mill_path, roll_number)
-                if os.path.isdir(roll_path):
-                    dates = os.listdir(roll_path)
-                    roll_result = {roll_number: []}
-
-                    for date in dates:
-                        date_path = os.path.join(roll_path, date)
-                        if os.path.isdir(date_path):
-                            label_folders = os.listdir(date_path)
-                            date_result = {date: []}
-
-                            for label in label_folders:
-                                label_path = os.path.join(date_path, label)
-                                if os.path.isdir(label_path):
-                                    fp_folder = os.path.join(label_path, "fp")
-                                    tp_folder = os.path.join(label_path, "tp")
-
-                                    # Check if 'fp' and 'tp' folders exist
-                                    if os.path.exists(fp_folder) or os.path.exists(
-                                        tp_folder
-                                    ):
-                                        fp_count = (
-                                            len(os.listdir(fp_folder))
-                                            if os.path.exists(fp_folder)
-                                            else 0
-                                        )
-                                        tp_count = (
-                                            len(os.listdir(tp_folder))
-                                            if os.path.exists(tp_folder)
-                                            else 0
-                                        )
-                                        label_result = {
-                                            "label": label,
-                                            "fp": fp_count,
-                                            "tp": tp_count,
-                                        }
-                                        date_result[date].append(label_result)
-
-                            if date_result[
-                                date
-                            ]:  # Check if date contains label folders with fp or tp folders
-                                roll_result[roll_number].append(date_result)
-
-                    if roll_result[
-                        roll_number
-                    ]:  # Check if roll number has any dates with label folders containing fp or tp
-                        mill_result[mill_name].append(roll_result)
-
-            if mill_result[
-                mill_name
-            ]:  # Check if mill has any roll numbers with dates containing label folders with fp or tp
-                results.append(mill_result)
-
-    return results
-
-
-# Function to fetch roll details from the database based on the date
 def fetch_roll_details(selected_date):
+    all_roll_details = {}
+
     try:
         # Connect to the PostgreSQL database
         connection = psycopg2.connect(
@@ -114,40 +50,61 @@ def fetch_roll_details(selected_date):
             password="soft",
             host="localhost",
             port="5432",
-            database="kpr-2",
+            database="postgres",  # Connect to the default 'postgres' database
         )
 
         # Create a cursor object
         cursor = connection.cursor()
 
-        # SQL query to fetch roll_number and timestamp based on selected_date
-        sql_query = """SELECT roll_number, timestamp FROM roll_details WHERE DATE(timestamp) = %s"""
+        # Query to fetch all database names except system databases
+        cursor.execute(
+            "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main');"
+        )
+        db_names = cursor.fetchall()
 
-        # Execute the SQL query
-        cursor.execute(sql_query, (selected_date,))
+        for db_name in db_names:
+            db_name = db_name[0]  # Extract database name from the result tuple
 
-        # Fetch all rows
-        roll_details = cursor.fetchall()
+            # Connect to the current database
+            db_connection = psycopg2.connect(
+                user="postgres",
+                password="soft",
+                host="localhost",
+                port="5432",
+                database=db_name,  # Connect to the current database
+            )
 
-        if not roll_details:  # If no data found for the selected date
-            return None
+            # Create a cursor object for the current database
+            db_cursor = db_connection.cursor()
 
-        # Format the roll details with the database name
-        formatted_roll_details = {
-            "kpr-2": [
-                {"roll_number": roll_number, "date": date.strftime("%Y-%m-%d")}
-                for roll_number, date in roll_details
-            ]
-        }
+            # SQL query to fetch roll_number and timestamp based on selected_date
+            sql_query = """SELECT roll_number, timestamp FROM roll_details WHERE DATE(timestamp) = %s"""
 
-        return formatted_roll_details
+            # Execute the SQL query
+            db_cursor.execute(sql_query, (selected_date,))
+
+            # Fetch all rows
+            roll_details = db_cursor.fetchall()
+
+            if roll_details:  # If data found for the selected date
+                formatted_roll_details = [
+                    {"roll_number": roll_number, "date": date.strftime("%Y-%m-%d")}
+                    for roll_number, date in roll_details
+                ]
+                all_roll_details[db_name] = formatted_roll_details
+
+            # Close the cursor and connection for the current database
+            db_cursor.close()
+            db_connection.close()
+
+        return all_roll_details
 
     except (Exception, psycopg2.Error) as error:
         print("Error fetching roll details:", error)
         return None
 
     finally:
-        # Close the database connection
+        # Close the cursor and connection for the default database
         if connection:
             cursor.close()
             connection.close()
@@ -156,6 +113,9 @@ def fetch_roll_details(selected_date):
 # Function to check if roll details exist in the folder structure
 def check_roll_details_exist(formatted_roll_details, base_folder):
     all_mill_images = []
+    missing_date_folders = []
+
+    # add list vairavle here this for Date folder {date_folder} does not exist.
     for database_name, roll_details in formatted_roll_details.items():
         database_images = {}
         for roll_detail in roll_details:
@@ -164,6 +124,8 @@ def check_roll_details_exist(formatted_roll_details, base_folder):
             date_folder = os.path.join(base_folder, database_name, roll_number, date)
             if not os.path.exists(date_folder):
                 print(f"Date folder {date_folder} does not exist.")
+                missing_date_folders.append(date_folder)
+
                 continue
 
             print(f"Roll details found for {roll_number} on {date} in {database_name}.")
@@ -181,7 +143,7 @@ def check_roll_details_exist(formatted_roll_details, base_folder):
 
         all_mill_images.append(database_images)
 
-    return all_mill_images
+    return all_mill_images, missing_date_folders
 
 
 def decrypt_and_save_images(date_folder, database_name, roll_number, date):
@@ -262,18 +224,24 @@ def index():
         # Fetch roll details based on the date
         roll_details = fetch_roll_details(selected_date)
 
-        if roll_details is None:  # If no data found for the selected date
+        if roll_details == {}:  # If no data found for the selected date
+            # print("No data available for the selected date.")
             alert_message = "No data available for the selected date."
+
         else:
             # Define the base folder where the data folders are located
             base_folder = r"C:\Users\91984\Desktop\data"
-            all_mill_images = check_roll_details_exist(roll_details, base_folder)
-
-            # Convert all_mill_images to JSON string
-            all_mill_images_json = json.dumps(all_mill_images)
+            all_mill_images, missing_date_folders = check_roll_details_exist(
+                roll_details, base_folder
+            )
 
             # Return JSON response
-            return all_mill_images_json
+            return jsonify(
+                {
+                    "all_mill_images": all_mill_images,
+                    "missing_date_folders": missing_date_folders,
+                }
+            )
 
     return render_template("index.html")
 
@@ -290,7 +258,11 @@ def clear_temp_folder():
 def move_image():
     source = request.form.get("source")
     destination = request.form.get("destination")
+    print("+++++++++++++++")
+    print(source)
     print(destination)
+    print("+++++++++++++++")
+
     # Create destination folder if it doesn't exist
     os.makedirs(destination, exist_ok=True)
 
@@ -298,6 +270,16 @@ def move_image():
     try:
         _, filename = os.path.split(source)
         os.rename(source, os.path.join(destination, filename))
+
+        validation_folder = r"C:\Users\91984\Desktop\validation"
+        db_connection_string = (
+            "dbname='main' user='postgres' host='localhost' password='soft'"
+        )
+        image_counter = ImageCounter(validation_folder, db_connection_string)
+        results = image_counter.count_fp_tp_images()
+        print("results", results)
+        image_counter.insert_into_db(results)
+
         return "Image moved successfully."
     except Exception as e:
         return str(e), 500

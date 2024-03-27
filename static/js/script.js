@@ -37,28 +37,43 @@ $(document).ready(function () {
 function showMillFolders() {
     var selectedDate = $('.datepicker').datepicker('getDate');
     var formattedDate = selectedDate.getFullYear() + "-" + (selectedDate.getMonth() + 1) + "-" + selectedDate.getDate();
-    millFoldersWithRollIDs = [];
+    // millFoldersWithRollIDs = [];
+
+    // Show circular loading spinner
+    $('#loadingSpinner').show();
 
     $.ajax({
         type: "POST",
         url: "/",
         data: { date: formattedDate },
         success: function (response) {
-            millFoldersWithRollIDs = JSON.parse(response);
-            // console.log(millFoldersWithRollIDs);
-            updateFolderList();
+
+            millFoldersWithRollIDs = response["all_mill_images"];
+            missing_date_folders = response["missing_date_folders"];
+            //  console.log(millFoldersWithRollIDs);
+            console.log(missing_date_folders);
+
+            updateFolderList(millFoldersWithRollIDs);
+
+            if (missing_date_folders.length > 0) {
+                showMissingDateFoldersDialog(missing_date_folders);
+            }
         },
         error: function (xhr, status, error) {
             console.error(xhr.responseText); // Print error message if any
+        },
+        complete: function () {
+            // Hide circular loading spinner once AJAX request is complete
+            $('#loadingSpinner').hide();
         }
     });
 
     dateSent = true;
 
-    function updateFolderList() {
-        // console.log("this update folder list ", millFoldersWithRollIDs);
+    function updateFolderList(millFoldersWithRollIDs) {
         var folderList = "<ul>";
         millFoldersWithRollIDs.forEach(function (millData) {
+
             for (var millName in millData) {
                 folderList += "<li><img src='static/assets/icons8-folder-48.png' class='folder-icon' />" +
                     "<button class='btn btn-link folder-btn' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData[millName]) + ")'>" +
@@ -73,7 +88,26 @@ function showMillFolders() {
         $('#folderTitle').html(''); // Clear the folder title
     }
 
+    function showMissingDateFoldersDialog(missing_date_folders) {
+        var dialogContent = "<div style='height: 300px; overflow-y: auto;'>";
+        dialogContent += "<p>Missing Date Folders:</p><ul>";
+        missing_date_folders.forEach(function (folder) {
+            dialogContent += "<li>" + folder + "</li>";
+        });
+        dialogContent += "</ul></div>";
+
+        // Display dialog box with missing date folders
+        bootbox.alert({
+            title: "Missing Date Folders",
+            message: dialogContent,
+            backdrop: true, // Allow clicking outside the dialog to dismiss
+            className: 'custom-dialog' // Add a custom class for additional styling
+        });
+    }
+
+
 }
+
 
 
 function showImages(millFolder, imageData) {
@@ -101,7 +135,11 @@ function showImages(millFolder, imageData) {
 
     // Show the back button
     $('#backButton').removeClass('d-none');
+
+    // Show the submit button
+    $('#submitBtn').removeClass('d-none');
 }
+
 
 
 function goBack() {
@@ -121,38 +159,60 @@ function submitImages() {
     currentImages.forEach(function (imageUrl) {
         var isTruePositive = imageStates[imageUrl];
 
-        // Check if the image state is specified (true positive or false positive)
         if (isTruePositive !== undefined) {
-            var imageLabel = getImageLabelFromUrl(imageUrl);
-            var rollNumber = getRollNumberFromUrl(imageUrl);
-            var date = getDateFromUrl(imageUrl);
+            var millName = getMillNameFromUrl(imageUrl); // Get the mill name from the image URL
 
-            if (imageLabel && rollNumber && date) {
-                var folderPath = "C:/Users/91984/Desktop/validation/" + "kpr-2/" + rollNumber + "/" + date + "/" + imageLabel + "/" + (isTruePositive ? "tp" : "fp");
+            if (millName) {
+                var imageLabel = getImageLabelFromUrl(imageUrl);
+                var rollNumber = getRollNumberFromUrl(imageUrl);
+                var date = getDateFromUrl(imageUrl);
+                console.log("imageLabel", imageLabel);
+                console.log("rollNumber", rollNumber);
+                console.log("date", date);
+                console.log("imageUrl", imageUrl);
 
-                // Perform AJAX request to move the image file to the destination folder
-                $.ajax({
-                    type: "POST",
-                    url: "/move-image",
-                    data: {
-                        source: imageUrl,
-                        destination: folderPath
-                    },
-                    success: function (response) {
-                        console.log(response);
-                    },
-                    error: function (xhr, status, error) {
-                        console.error(xhr.responseText); // Print error message if any
-                    }
-                });
+                if (imageLabel && rollNumber && date) {
+                    var folderPath = "C:/Users/91984/Desktop/validation/" + millName + "/" + rollNumber + "/" + date + "/" + imageLabel + "/" + (isTruePositive ? "tp" : "fp");
+                    console.log("folderPath", folderPath);
+
+                    console.log("source", imageUrl);
+
+
+                    $.ajax({
+                        type: "POST",
+                        url: "/move-image",
+                        data: {
+                            source: imageUrl,
+                            destination: folderPath
+                        },
+                        success: function (response) {
+                            console.log(response);
+                        },
+                        error: function (xhr, status, error) {
+                            console.error(xhr.responseText); // Print error message if any
+                        }
+                    });
+                } else {
+                    console.log("Not work ");
+                }
             }
         }
     });
 
     // Inform user that images have been submitted
     alert('Images submitted!');
-    goBack();
+    goBack(); // Clear the UI and go back to the mill folders view
 }
+
+// Function to extract the mill name from the image URL
+function getMillNameFromUrl(imageUrl) {
+    var parts = imageUrl.split('/');
+    if (parts.length >= 2) {
+        return parts[2]; // Assuming the mill name is the second part of the URL
+    }
+    return null;
+}
+
 
 
 function getImageLabelFromUrl(imageUrl) {
@@ -263,16 +323,16 @@ function goBack() {
     imageStates = {};
 }
 
-// Function to extract the roll number from the image URL
 function getRollNumberFromUrl(imageUrl) {
     // Example URL format: C:/Users/91984/Desktop/data/kpr-2/41/2024-03-16/lycre/image.jpg
-    var regex = /kpr-2\/(\d+)\/\d{4}-\d{2}-\d{2}\//; // Regex pattern to match the roll number
+    var regex = /\/(\d+)\/\d{4}-\d{2}-\d{2}\//; // Updated regex pattern to match the roll number
     var match = imageUrl.match(regex);
     if (match && match.length > 1) {
         return match[1]; // Return the captured roll number
     }
     return null; // Return null if no match is found
 }
+
 // Function to extract the date from the image URL
 function getDateFromUrl(imageUrl) {
     // Example URL format: C:/Users/91984/Desktop/data/kpr-2/41/2024-03-16/lycre/image.jpg
@@ -283,3 +343,4 @@ function getDateFromUrl(imageUrl) {
     }
     return null; // Return null if no match is found
 }
+
