@@ -172,7 +172,10 @@ function submitImages() {
                 console.log("imageUrl", imageUrl);
 
                 if (imageLabel && rollNumber && date) {
-                    var folderPath = "C:/Users/91984/Desktop/validation/" + millName + "/" + rollNumber + "/" + date + "/" + imageLabel + "/" + (isTruePositive ? "tp" : "fp");
+
+                    // var folderPath = "C:/Users/91984/Desktop/validation/" + millName + "/" + rollNumber + "/" + date + "/" + imageLabel + "/" + (isTruePositive ? "tp" : "fp");
+                    var folderPath = "/home/alan/validation/" + millName + "/" + rollNumber + "/" + date + "/" + imageLabel + "/" + (isTruePositive ? "tp" : "fp");
+
                     console.log("folderPath", folderPath);
 
                     console.log("source", imageUrl);

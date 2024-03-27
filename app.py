@@ -15,6 +15,8 @@ from ImageCounter import (
     ImageCounter,
 )
 
+import shutil
+
 app = Flask(__name__)
 
 
@@ -24,7 +26,7 @@ db_instance = Database(
         "password": "soft",
         "host": "localhost",
         "port": "5432",
-        "database": "kpr-2",
+        "database": "postgres",
     },
     destination_db_config={
         "user": "postgres",
@@ -230,7 +232,7 @@ def index():
 
         else:
             # Define the base folder where the data folders are located
-            base_folder = r"C:\Users\91984\Desktop\data"
+            base_folder = r"/home/alan/data/"
             all_mill_images, missing_date_folders = check_roll_details_exist(
                 roll_details, base_folder
             )
@@ -254,34 +256,54 @@ def clear_temp_folder():
     os.makedirs(temp_folder, exist_ok=True)
 
 
+
 @app.route("/move-image", methods=["POST"])
 def move_image():
     source = request.form.get("source")
     destination = request.form.get("destination")
     print("+++++++++++++++")
-    print(source)
-    print(destination)
+    print("Source:", source)
+    print("Destination:", destination)
     print("+++++++++++++++")
 
-    # Create destination folder if it doesn't exist
-    os.makedirs(destination, exist_ok=True)
-
-    # Move the image file
     try:
+        # Check if the source file exists
+        if not os.path.exists(source):
+            return "Source file does not exist.", 500
+        
+        # Create destination folder if it doesn't exist
+        os.makedirs(destination, exist_ok=True)
+
+        # Move the image file
         _, filename = os.path.split(source)
-        os.rename(source, os.path.join(destination, filename))
+        destination_path = os.path.join(destination, filename)
+        print("Destination path:", destination_path)
+        
+        if os.path.exists(destination_path):
+            print("File already exists in destination.")
+            return "File already exists in destination.", 500
 
-        validation_folder = r"C:\Users\91984\Desktop\validation"
-        db_connection_string = (
-            "dbname='main' user='postgres' host='localhost' password='soft'"
-        )
-        image_counter = ImageCounter(validation_folder, db_connection_string)
-        results = image_counter.count_fp_tp_images()
-        print("results", results)
-        image_counter.insert_into_db(results)
+        shutil.move(source, destination_path)
+        print("File moved to:", destination_path)  # Print the destination path
+        
+        if os.path.exists(destination_path):
+            print("File exists in destination.")
 
-        return "Image moved successfully."
+            validation_folder = r"/home/alan/validation/"
+            db_connection_string = (
+                "dbname='main' user='postgres' host='localhost' password='soft'"
+            )
+            image_counter = ImageCounter(validation_folder, db_connection_string)
+            results = image_counter.count_fp_tp_images()
+            print("Results:", results)
+            image_counter.insert_into_db(results)
+
+            return "Image moved successfully."
+        else:
+            return "File does not exist in destination.", 500
+        
     except Exception as e:
+        print("Error:", e)  # Print the error
         return str(e), 500
 
 
@@ -306,7 +328,7 @@ def dashboard():
 
 
 def restore_databases_daily():
-    db_folder_path = "C:/Users/91984/Desktop/db"
+    db_folder_path = "/home/alan/db/"
     db_host = "localhost"
     db_port = "5432"
     db_user = "postgres"
@@ -317,8 +339,8 @@ def restore_databases_daily():
     print("Databases restored.")
 
 
-# schedule.every().day.at("00:00").do(restore_databases_daily)
-# schedule.every(2).minutes.do(restore_databases_daily)
+schedule.every().day.at("00:00").do(restore_databases_daily)
+# schedule.every(1).minutes.do(restore_databases_daily)
 
 
 def run_scheduler():
@@ -328,6 +350,7 @@ def run_scheduler():
 
 
 if __name__ == "__main__":
-    # scheduler_thread = threading.Thread(target=run_scheduler)
-    # scheduler_thread.start()
-    app.run(debug=True, host="0.0.0.0", port="5000")
+    scheduler_thread = threading.Thread(target=run_scheduler)
+    scheduler_thread.start()
+    # app.run(debug=True, host="0.0.0.0", port="5000")
+    app.run(debug=True)
