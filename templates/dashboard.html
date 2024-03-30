@@ -44,14 +44,14 @@
                     <table id="dashboardTable" class="table table-bordered">
                         <thead>
                             <tr>
-                                <th>Edit</th> <!-- Edit column -->
+                                <th>Edit</th> 
                                 <th>s.no</th>
                                 <th>Date</th>
                                 <th>Mill Name</th>
+                                <th>Machine name</th>
                                 <th>Machine Brand</th>
                                 <th>Machine dia</th>
                                 <th>Model name</th>
-                                <th>Machine name</th>
                                 <th>avg rpm</th>
                                 <th>feeder type</th>
                                 <th>guage</th>
@@ -85,7 +85,7 @@
     </div>
 
 
-    <!-- Edit Modal -->
+
     <div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
@@ -105,6 +105,11 @@
                         <label for="millName">Mill Name</label>
                         <input type="text" class="form-control" id="millName" placeholder="Enter Mill Name">
                     </div>
+
+                    <div class="form-group">
+                        <label for="machineName">Machine Name</label>
+                        <input type="text" class="form-control" id="machineName" placeholder="Enter Machine Name">
+                    </div>
                     <div class="form-group">
                         <label for="machineBrand">Machine Brand</label>
                         <input type="text" class="form-control" id="machineBrand" placeholder="Enter Machine Brand">
@@ -117,10 +122,7 @@
                         <label for="modelName">Model Name</label>
                         <input type="text" class="form-control" id="modelName" placeholder="Enter Model Name">
                     </div>
-                    <div class="form-group">
-                        <label for="machineName">Machine Name</label>
-                        <input type="text" class="form-control" id="machineName" placeholder="Enter Machine Name">
-                    </div>
+
                     <div class="form-group">
                         <label for="avgRpm">Average RPM</label>
                         <input type="text" class="form-control" id="avgRpm" placeholder="Enter Average RPM">

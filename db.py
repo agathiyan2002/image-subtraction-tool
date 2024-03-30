@@ -11,27 +11,17 @@ class Database:
 
     def fetch_all_databases_data(self, selected_date):
         try:
-            # Connect to the PostgreSQL server
             source_connection = psycopg2.connect(**self.source_db_config)
             source_cursor = source_connection.cursor()
-
-            # Get a list of all non-template databases excluding 'postgres' and 'main'
             source_cursor.execute(
                 "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main');"
             )
-
-            # Fetch all database names
             database_names = [row[0] for row in source_cursor.fetchall()]
-            # print(database_names)  # Print the fetched database names
-
-            # Iterate over each database and fetch data
             for db_name in database_names:
                 print("Fetching data from database:", db_name)
                 self.fetch_defect_data(selected_date, db_name)
-
         except psycopg2.Error as e:
             print("Error fetching data from all databases:", e)
-
         finally:
             if source_connection:
                 source_cursor.close()
@@ -39,26 +29,19 @@ class Database:
 
     def fetch_defect_data(self, selected_date, db_name):
         try:
-            # Connect to the source database
             self.source_db_config["database"] = db_name
             source_connection = psycopg2.connect(**self.source_db_config)
             source_cursor = source_connection.cursor()
-
-            # Fetch defect data from the defect_details table
             source_cursor.execute(
                 "SELECT defecttyp_id, timestamp FROM defect_details WHERE DATE(timestamp) = %s",
                 (selected_date,),
             )
             defect_data = source_cursor.fetchall()
-
-            # Fetch the count of rows in rotation_details for the selected date
             source_cursor.execute(
                 "SELECT COUNT(rotation) FROM rotation_details WHERE DATE(timestamp) = %s AND rotation IS NOT NULL",
                 (selected_date,),
             )
             rotation_data = source_cursor.fetchall()
-
-            # Fetch average RPM from rotation_details for the selected date
             source_cursor.execute(
                 """SELECT AVG(count) AS mean_count_per_minute
                 FROM (
@@ -71,28 +54,21 @@ class Database:
             )
             avg_rpm_result = source_cursor.fetchone()
             avg_rpm = avg_rpm_result[0] if avg_rpm_result else None
-
-            # Fetch data from machine_program_details table for selected date
             source_cursor.execute(
                 "SELECT gsm, gg, loop_length, fabric_type, knit_type FROM machine_program_details WHERE DATE(timestamp) = %s",
                 (selected_date,),
             )
             machine_program_data = source_cursor.fetchall()
-
-            # Fetch the count of distinct alarmtyp_id values for selected date
             source_cursor.execute(
                 "SELECT COUNT(alarmtyp_id) FROM alarm_status WHERE DATE(timestamp) = %s AND alarmtyp_id IS NOT NULL",
                 (selected_date,),
             )
             num_alarm_types = source_cursor.fetchone()[0]
-            # call insert_data function properly
             logging.basicConfig(
                 filename="log.txt",
                 level=logging.INFO,
                 format="%(asctime)s - %(levelname)s - %(message)s",
             )
-
-            # Your print statements
             logging.info("######################################")
             logging.info("db name: %s", db_name)
             logging.info("Selected Date: %s", selected_date)
@@ -103,7 +79,6 @@ class Database:
             logging.info("Number of Alarm Types: %s", num_alarm_types)
             logging.info("Database Name: %s", db_name)
             logging.info("######################################")
-
             self.insert_data(
                 selected_date,
                 defect_data,
@@ -113,11 +88,9 @@ class Database:
                 num_alarm_types,
                 db_name,
             )
-
         except psycopg2.Error as e:
             print(f"Error fetching data from database {db_name}:", e)
             return None, None, None, None, None
-
         finally:
             if source_connection:
                 source_cursor.close()
@@ -133,39 +106,24 @@ class Database:
         alarm_status,
         db_name,
     ):
-        # print("insder insde db name :", db_name)
         try:
-            # Connect to the destination database (main)
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
-
-            # Group defect types by their counts
             defect_counts = {}
             total_revolutions = 0
-
-            # Initialize defect_counts for each defect_id
             if data is not None:
                 for defect_id, _ in data:
                     defect_counts.setdefault(defect_id, 0)
-
-                # Increment counts for each defect_id
                 for defect_id, _ in data:
                     defect_counts[defect_id] += 1
-
-            # Serialize the defect_counts dictionary to a JSON string
             defect_counts_json = json.dumps(defect_counts)
-
-            # Initialize lists for machine program data attributes
             gsm = []
             gg = []
             loop_length = []
             fabric_types = []
             knit_types = []
-
-            # Iterate over each tuple in machine_program_data
             if machine_program_data is not None:
                 for program_data in machine_program_data:
-                    # Check if the tuple contains enough elements
                     if len(program_data) >= 5:
                         gsm.append(program_data[0])
                         gg.append(program_data[1])
@@ -173,42 +131,39 @@ class Database:
                         fabric_types.append(program_data[3])
                         knit_types.append(program_data[4])
                     else:
-                        # Append None if the tuple does not contain enough elements
                         gsm.append(None)
                         gg.append(None)
                         loop_length.append(None)
                         fabric_types.append(None)
                         knit_types.append(None)
-
-            # Convert lists to JSON strings
             gsm_json = json.dumps(gsm)
             gg_json = json.dumps(gg)
             loop_length_json = json.dumps(loop_length)
             fabric_types_json = json.dumps(fabric_types)
             knit_types_json = json.dumps(knit_types)
-
+            mill_name, machine_name = db_name.split("_")
             sql_query = """INSERT INTO mill_details (
-            date, mill_name, defect_name, no_of_revolutions, avg_rpm, gsm,
-            guage, loop_length, fabric_material, machine_rolling_type, total_alarms
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-        ) ON CONFLICT (date, mill_name) DO UPDATE SET
-            defect_name = EXCLUDED.defect_name,
-            no_of_revolutions = EXCLUDED.no_of_revolutions,
-            avg_rpm = EXCLUDED.avg_rpm,
-            gsm = EXCLUDED.gsm,
-            guage = EXCLUDED.guage,
-            loop_length = EXCLUDED.loop_length,
-            fabric_material = EXCLUDED.fabric_material,
-            machine_rolling_type = EXCLUDED.machine_rolling_type,
-            total_alarms = EXCLUDED.total_alarms;
-"""
-            # Execute the UPSERT SQL query
+                    date, mill_name, machine_name, defect_name, no_of_revolutions, avg_rpm, gsm,
+                    guage, loop_length, fabric_material, machine_rolling_type, total_alarms
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                ) ON CONFLICT (date, mill_name, machine_name) DO UPDATE SET
+                    defect_name = EXCLUDED.defect_name,
+                    no_of_revolutions = EXCLUDED.no_of_revolutions,
+                    avg_rpm = EXCLUDED.avg_rpm,
+                    gsm = EXCLUDED.gsm,
+                    guage = EXCLUDED.guage,
+                    loop_length = EXCLUDED.loop_length,
+                    fabric_material = EXCLUDED.fabric_material,
+                    machine_rolling_type = EXCLUDED.machine_rolling_type,
+                    total_alarms = EXCLUDED.total_alarms;
+                """
             destination_cursor.execute(
                 sql_query,
                 (
                     selected_date,
-                    db_name,
+                    mill_name,
+                    machine_name,
                     defect_counts_json,
                     rotation_data,
                     avg_rpm,
@@ -220,15 +175,10 @@ class Database:
                     alarm_status,
                 ),
             )
-
-            # Commit the transaction
             destination_connection.commit()
-
             print("Data inserted or updated successfully.")
-
         except psycopg2.Error as e:
             print("Error inserting or updating data:", e)
-
         finally:
             if destination_connection:
                 destination_cursor.close()
@@ -236,24 +186,17 @@ class Database:
 
     def fetch_records_by_date(self, selected_date):
         try:
-            # Connect to the destination database (main)
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
-
-            # Fetch records from the mill_details table for the selected date, excluding the id column
             destination_cursor.execute(
-                "SELECT date, mill_name, machine_brand, machine_dia, model_name, machine_name, avg_rpm, feeder_type, guage, gsm, loop_length, fabric_material, machine_rolling_type, status, internet_status, uptime, no_of_revolutions, defect_name, total_alarms, true_positive, name_mismatch, false_positive, fabric_parameters, comments, customer_complaints_requirements, cdc_last_done, latest_action FROM mill_details WHERE date = %s",
+                "SELECT date, mill_name,machine_name, machine_brand, machine_dia,model_name,avg_rpm, feeder_type, guage, gsm, loop_length, fabric_material, machine_rolling_type, status, internet_status, uptime, no_of_revolutions, defect_name, total_alarms, true_positive, name_mismatch, false_positive, fabric_parameters, comments, customer_complaints_requirements, cdc_last_done, latest_action FROM mill_details WHERE date = %s",
                 (selected_date,),
             )
-
             records = destination_cursor.fetchall()
-
             return records
-
         except psycopg2.Error as e:
             print("Error fetching records:", e)
             return None
-
         finally:
             if destination_connection:
                 destination_cursor.close()
@@ -261,10 +204,8 @@ class Database:
 
     def update_records(self, updated_record):
         try:
-            # Connect to the destination database (main)
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
-
             date = updated_record.get("date")
             mill_name = updated_record.get("mill_name")
             machine_brand = updated_record.get("machine_brand")
@@ -292,14 +233,12 @@ class Database:
             customerComplaints = updated_record.get("customerComplaints")
             cdc = updated_record.get("cdc")
             latestAction = updated_record.get("latestAction")
-
             sql_query = """
                 UPDATE mill_details
                 SET 
                     machine_brand = %s,
                     machine_dia = %s,
                     model_name = %s,
-                    machine_name = %s,
                     avg_rpm = %s,
                     feeder_type = %s,
                     guage = %s,
@@ -321,17 +260,14 @@ class Database:
                     customer_complaints_requirements = %s,
                     cdc_last_done = %s,
                     latest_action = %s
-                WHERE date = %s And mill_name=%s
+                WHERE date = %s And mill_name=%s And machine_name=%s
             """
-
-            # Execute the SQL query with the updated data
             destination_cursor.execute(
                 sql_query,
                 (
                     machine_brand,
                     machineDia,
                     modelName,
-                    machineName,
                     avgRpm,
                     feederType,
                     gauge,
@@ -355,20 +291,15 @@ class Database:
                     latestAction,
                     date,
                     mill_name,
+                    machineName,
                 ),
             )
-
-            # Commit the transaction
             destination_connection.commit()
-
             print("Record updated successfully.")
-
-            return True  # Return True to indicate success
-
+            return True
         except psycopg2.Error as e:
             print("Error updating record:", e)
-            return False  # Return False to indicate failure
-
+            return False
         finally:
             if destination_connection:
                 destination_cursor.close()
