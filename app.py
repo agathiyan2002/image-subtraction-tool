@@ -186,25 +186,33 @@ def update_records_api():
 def index():
     global validation_folder
     roll_details = []
-    alert_message = None
+    alert_message = ""
     all_mill_images = []
 
     if request.method == "POST":
         clear_temp_folder()
         selected_date = request.form["date"]
         roll_details = fetch_roll_details(selected_date)
+
         if roll_details == {}:
-            alert_message = "No data available for the selected date."
+
+            alert_message = "false"
+            return jsonify({"alert_message": alert_message})
+
         else:
+
+            alert_message = "true"
             global base_folder
             all_mill_images, missing_date_folders = check_roll_details_exist(
                 roll_details, base_folder
             )
+
             return jsonify(
                 {
                     "all_mill_images": all_mill_images,
                     "missing_date_folders": missing_date_folders,
                     "validation_folder": validation_folder,
+                    "alert_message": alert_message,
                 }
             )
 

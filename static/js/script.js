@@ -1,5 +1,6 @@
 var millFoldersWithRollIDs = {};
 var validation_folder = "";
+var alert_message = "";
 var currentImageIndex = 0;
 var currentImages = [];
 var imageStates = {};
@@ -40,6 +41,12 @@ function showMillFolders() {
             millFoldersWithRollIDs = response["all_mill_images"];
             missing_date_folders = response["missing_date_folders"];
             validation_folder = response["validation_folder"];
+            alert_message = response["alert_message"];
+
+            if (alert_message == "false") {
+                showErrorDialog("No records found for the selected date.");
+                return;
+            }
 
             updateFolderList(millFoldersWithRollIDs);
 
@@ -56,40 +63,51 @@ function showMillFolders() {
     });
 
     dateSent = true;
-
-    function updateFolderList(millFoldersWithRollIDs) {
-        var folderList = "<ul>";
-        millFoldersWithRollIDs.forEach(function (millData) {
-            for (var millName in millData) {
-                folderList += "<li><img src='static/assets/icons8-folder-48.png' class='folder-icon' />" +
-                    "<button class='btn btn-link folder-btn' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData[millName]) + ")'>" +
-                    millName + "</button></li>";
-            }
-        });
-        folderList += "</ul>";
-
-        $('#millFolders').html(folderList);
-        $('#backButton').removeClass('d-none');
-        $('#imageDisplay').html('');
-        $('#folderTitle').html('');
-    }
-
-    function showMissingDateFoldersDialog(missing_date_folders) {
-        var dialogContent = "<div style='height: 300px; overflow-y: auto;'>";
-        dialogContent += "<p>Missing Date Folders:</p><ul>";
-        missing_date_folders.forEach(function (folder) {
-            dialogContent += "<li>" + folder + "</li>";
-        });
-        dialogContent += "</ul></div>";
-
-        bootbox.alert({
-            title: "Missing Date Folders",
-            message: dialogContent,
-            backdrop: true,
-            className: 'custom-dialog'
-        });
-    }
 }
+
+function showErrorDialog(message) {
+    bootbox.alert({
+        title: "Error",
+        message: message,
+        backdrop: true,
+        className: 'custom-dialog'
+    });
+}
+
+function updateFolderList(millFoldersWithRollIDs) {
+    console.log("alert_message", alert_message);
+    var folderList = "<ul>";
+    millFoldersWithRollIDs.forEach(function (millData) {
+        for (var millName in millData) {
+            folderList += "<li><img src='static/assets/icons8-folder-48.png' class='folder-icon' />" +
+                "<button class='btn btn-link folder-btn' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData[millName]) + ")'>" +
+                millName + "</button></li>";
+        }
+    });
+    folderList += "</ul>";
+
+    $('#millFolders').html(folderList);
+    $('#backButton').removeClass('d-none');
+    $('#imageDisplay').html('');
+    $('#folderTitle').html('');
+}
+
+function showMissingDateFoldersDialog(missing_date_folders) {
+    var dialogContent = "<div style='height: 300px; overflow-y: auto;'>";
+    dialogContent += "<p>Missing Date Folders:</p><ul>";
+    missing_date_folders.forEach(function (folder) {
+        dialogContent += "<li>" + folder + "</li>";
+    });
+    dialogContent += "</ul></div>";
+
+    bootbox.alert({
+        title: "Missing Date Folders",
+        message: dialogContent,
+        backdrop: true,
+        className: 'custom-dialog'
+    });
+}
+
 
 function showImages(millFolder, imageData) {
     var imageList = "<div class='image-container'>";
