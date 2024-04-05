@@ -62,7 +62,7 @@ def fetch_roll_details(selected_date):
         )
         cursor = connection.cursor()
         cursor.execute(
-            "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main');"
+            "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner');"
         )
         db_names = cursor.fetchall()
 
@@ -76,7 +76,7 @@ def fetch_roll_details(selected_date):
                 database=db_name,
             )
             db_cursor = db_connection.cursor()
-            sql_query = """SELECT roll_number, timestamp FROM roll_details WHERE DATE(timestamp) = %s"""
+            sql_query = """SELECT roll_name, timestamp FROM roll_details WHERE DATE(timestamp) = %s"""
             db_cursor.execute(sql_query, (selected_date,))
             roll_details = db_cursor.fetchall()
             if roll_details:
@@ -98,6 +98,7 @@ def fetch_roll_details(selected_date):
 
 
 def check_roll_details_exist(formatted_roll_details, base_folder):
+    print("formatted_roll_details", formatted_roll_details)
     all_mill_images = []
     missing_date_folders = []
     for database_name, roll_details in formatted_roll_details.items():
@@ -113,22 +114,32 @@ def check_roll_details_exist(formatted_roll_details, base_folder):
         for roll_detail in roll_details:
             roll_number = roll_detail["roll_number"]
             date = roll_detail["date"]
-            date_folder = os.path.join(
-                base_folder, database_name, machine_name, roll_number, date
-            )
-            if not os.path.exists(date_folder):
-                missing_date_folders.append(date_folder)
-                continue
-            images = decrypt_and_save_images(
-                date_folder, machine_name, database_name, roll_number, date
-            )
-            if images:
-                if database_name not in database_images:
-                    database_images[database_name] = {}
-                if roll_number not in database_images[database_name]:
-                    database_images[database_name][roll_number] = {}
-                if date not in database_images[database_name][roll_number]:
-                    database_images[database_name][roll_number][date] = images
+
+            if (
+                base_folder is not None
+                and database_name is not None
+                and machine_name is not None
+                and roll_number is not None
+                and date is not None
+            ):
+                date_folder = os.path.join(
+                    base_folder, database_name, machine_name, roll_number, date
+                )
+                if not os.path.exists(date_folder):
+                    missing_date_folders.append(date_folder)
+                    continue
+                images = decrypt_and_save_images(
+                    date_folder, machine_name, database_name, roll_number, date
+                )
+                if images:
+                    if database_name not in database_images:
+                        database_images[database_name] = {}
+                    if roll_number not in database_images[database_name]:
+                        database_images[database_name][roll_number] = {}
+                    if date not in database_images[database_name][roll_number]:
+                        database_images[database_name][roll_number][date] = images
+            else:
+                print("One or more components are None.")
         all_mill_images.append(database_images)
     return all_mill_images, missing_date_folders
 
@@ -281,7 +292,7 @@ def restore_databases_daily():
     print("Databases restored.")
 
 
-schedule.every().day.at("00:00").do(restore_databases_daily)
+schedule.every().day.at("09:00").do(restore_databases_daily)
 
 
 def run_scheduler():
@@ -291,6 +302,7 @@ def run_scheduler():
 
 
 if __name__ == "__main__":
+    restore_databases_daily()
     scheduler_thread = threading.Thread(target=run_scheduler)
     scheduler_thread.start()
     app.run(debug=True)

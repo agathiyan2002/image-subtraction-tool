@@ -14,7 +14,7 @@ class Database:
             source_connection = psycopg2.connect(**self.source_db_config)
             source_cursor = source_connection.cursor()
             source_cursor.execute(
-                "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main');"
+                "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner');"
             )
             database_names = [row[0] for row in source_cursor.fetchall()]
             for db_name in database_names:
