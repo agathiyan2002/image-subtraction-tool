@@ -15,6 +15,25 @@
 </head>
 
 <body>
+    <div id="qualityCheckingFrame" class="d-none">
+        <div class="d-flex justify-content-between">
+            <!-- Back button -->
+            <button id="backButtonQuaty" class="btn btn-outline-secondary back-button" onclick="hideQualityCheckingFrame()">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+
+            <!-- Save button -->
+            <button id="saveButton" class="btn btn-outline-secondary back-button" onclick="showSecondaryDialog()">
+                <i class="far fa-save"></i> Save
+            </button>
+        </div>
+
+        <!-- Content for quality checking frame -->
+        <h2 id="qualityCheckingHeading">Quality Checking</h2>
+        <!-- Add other content here -->
+    </div>
+
+
 
     <div class="container-fluid mt-5">
         <div class="row justify-content-end pr-4">
@@ -57,19 +76,35 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="imageModalLabel">Image Viewer</h5>
-                        <!-- add some datile for image
-                        add roll id add lable folder have  -->
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
                     <div class="modal-body">
-                        <iframe id="imageFrame" frameborder="0" style="width:100%;height:600px;"></iframe>
+                        <div class="image-info">
+                            <p id="imageLabel" class="info-item"></p>
+                            <p id="status" class="info-item"></p>
+                        </div>
+                        <iframe id="imageFrame" frameborder="0" style="width:100%;height:700px;"></iframe>
+                        <p id="imageCount"></p>
+
+                        <!-- <p>Shortcut Keys:</p> -->
+                        <ul class="shortcut-keys">
+                            <li>- Next Image: D</li>
+                            <li>- Previous Image: A</li>
+                            <li>- True Positive: Right Arrow</li>
+                            <li>- False Positive: Left Arrow</li>
+                            <li>- Name Mismatch: Up Arrow</li>
+                        </ul>
                     </div>
+
                 </div>
+
             </div>
         </div>
     </div>
+
+
 
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>

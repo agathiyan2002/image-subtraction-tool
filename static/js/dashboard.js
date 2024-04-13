@@ -34,7 +34,18 @@ function fetchMillDetails() {
                 row += '<td><button type="button" class="btn btn-link edit-btn" data-toggle="modal" data-target="#editModal">Edit</button></td>';
                 row += '<td>' + (index + 1) + '</td>';
                 $.each(record, function (key, value) {
-                    if (key === 17) {
+                    if (value === null) {
+                        row += '<td></td>';
+                    } else if (key === 2) { // Check if it's the second index
+                        var roundedValue = Math.round(parseFloat(value)); // Round to nearest integer
+                        row += '<td>' + roundedValue + '</td>';
+                    } else if (key === 3 || key === 4 || key === 5) { // Check if it's indices 3, 4, or 5
+                        if (value === '[]') {
+                            row += '<td></td>'; // Render empty cell
+                        } else {
+                            row += '<td>' + value + '</td>'; // Render value
+                        }
+                    } else if (key === 8) {
                         row += '<td>';
                         var defectData = JSON.parse(value);
                         $.each(defectData, function (subkey, subvalue) {
@@ -42,7 +53,16 @@ function fetchMillDetails() {
                             row += replacedSubkey + ': ' + subvalue + '<br>';
                         });
                         row += '</td>';
-                    } else {
+                    } else if (key === 9) {
+                        row += '<td>';
+                        var defectData = JSON.parse(value);
+                        $.each(defectData, function (subkey, subvalue) {
+                            var replacedSubkey = subkeyMap[subkey] || subkey;
+                            row += replacedSubkey + ': ' + subvalue + '<br>';
+                        });
+                        row += '</td>';
+                    }
+                    else {
                         row += '<td>' + value + '</td>';
                     }
                 });
@@ -105,22 +125,14 @@ function saveChanges() {
         success: function (response) {
             console.log('Record updated successfully:', response);
             $('#editModal').modal('hide');
+            fetchMillDetails(); // Refresh the table after saving changes
         },
         error: function (error) {
             console.error('Error updating record:', error);
             alert('Failed to update record. Please try again.');
         }
     });
-    fetchMillDetails();
 }
-
-$(document).ready(function () {
-    initializeDashboard();
-
-    $('#dashboardTable').on('click', '.edit-btn', function () {
-        $('#editModal').modal('show');
-    });
-});
 
 $(document).ready(function () {
     initializeDashboard();
@@ -158,8 +170,4 @@ $(document).ready(function () {
         $('#cdc').val(row.find('td:eq(27)').text());
         $('#latestAction').val(row.find('td:eq(28)').text());
     });
-});
-
-$(document).ready(function () {
-    initializeDashboard();
 });

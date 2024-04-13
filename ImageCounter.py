@@ -1,5 +1,6 @@
 import os
 import psycopg2
+from collections import defaultdict
 
 
 class ImageCounter:
@@ -59,36 +60,91 @@ class ImageCounter:
                                             }
                                         )
 
-        return results
+        # Aggregate results based on mill name, machine name, and date
+        aggregated_results = defaultdict(lambda: defaultdict(int))
+        for result in results:
+            mill_name = result["mill_name"]
+            machine_name = result["machine_name"]
+            date = result["date"]
+            total_tp_count = result["total_tp_count"]
+            total_fp_count = result["total_fp_count"]
+            key = (mill_name, machine_name, date)
+            aggregated_results[key]["total_tp_count"] += total_tp_count
+            aggregated_results[key]["total_fp_count"] += total_fp_count
 
-    def insert_into_db(self, results):
+        # Convert aggregated results to the desired output format
+        final_results = []
+        for key, counts in aggregated_results.items():
+            mill_name, machine_name, date = key
+            final_results.append(
+                {
+                    "mill_name": mill_name,
+                    "machine_name": machine_name,
+                    "date": date,
+                    "total_tp_count": counts["total_tp_count"],
+                    "total_fp_count": counts["total_fp_count"],
+                }
+            )
+        print("+++++++++++++++++++++++++++++++++++++++++")
+        print(final_results)
+        print("+++++++++++++++++++++++++++++++++++++++++++++")
+
+        return final_results
+
+    def insert_into_db(
+        self,
+        mill_name,
+        machine_name,
+        date,
+        total_tp_count,
+        total_fp_count,
+        total_nmm_count,
+        comment,
+    ):
         try:
             conn = psycopg2.connect(self.db_connection_string)
             cursor = conn.cursor()
 
-            for result in results:
-                mill_name = result["mill_name"]
-                machine_name = result["machine_name"]
-                date = result["date"]
-                tp_count = result["total_tp_count"]
-                fp_count = result["total_fp_count"]
+            # mill_name = result["mill_name"]
+            # machine_name = result["machine_name"]
+            # date = result["date"]
+            # tp_count = result["total_tp_count"]
+            # fp_count = result["total_fp_count"]
+            # nmm_count = result["total_nmm_count"]
+            # comment = result["comment"]
 
+            cursor.execute(
+                "SELECT * FROM mill_details WHERE date = %s AND mill_name = %s AND machine_name=%s",
+                (date, mill_name, machine_name),
+            )
+            existing_record = cursor.fetchone()
+
+            if existing_record:
                 cursor.execute(
-                    "SELECT * FROM mill_details WHERE date = %s AND mill_name = %s AND machine_name=%s",
-                    (date, mill_name, machine_name),
+                    "UPDATE mill_details SET true_positive = %s, false_positive = %s, name_mismatch = %s, comments = %s WHERE date = %s AND mill_name = %s AND machine_name = %s ",
+                    (
+                        total_tp_count,
+                        total_fp_count,
+                        total_nmm_count,
+                        comment,
+                        date,
+                        mill_name,
+                        machine_name,
+                    ),
                 )
-                existing_record = cursor.fetchone()
-
-                if existing_record:
-                    cursor.execute(
-                        "UPDATE mill_details SET true_positive = %s, false_positive = %s WHERE date = %s AND mill_name = %s AND machine_name = %s ",
-                        (tp_count, fp_count, date, mill_name, machine_name),
-                    )
-                else:
-                    cursor.execute(
-                        "INSERT INTO mill_details (mill_name,machine_name, date, true_positive, false_positive) VALUES (%s, %s,%s, %s, %s)",
-                        (mill_name, machine_name, date, tp_count, fp_count),
-                    )
+            else:
+                cursor.execute(
+                    "INSERT INTO mill_details (mill_name,machine_name, date, true_positive, false_positive, name_mismatch, comments) VALUES (%s, %s,%s, %s, %s, %s, %s)",
+                    (
+                        mill_name,
+                        machine_name,
+                        date,
+                        total_tp_count,
+                        total_fp_count,
+                        total_nmm_count,
+                        comment,
+                    ),
+                )
 
             conn.commit()
             print("Data inserted successfully into the database.")

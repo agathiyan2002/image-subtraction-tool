@@ -3,8 +3,10 @@ var validation_folder = "";
 var alert_message = "";
 var currentImageIndex = 0;
 var currentImages = [];
+var error_databases = [];
 var imageStates = {};
 var dateSent = false;
+
 $(document).ready(function () {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
@@ -19,15 +21,23 @@ $(document).ready(function () {
             } else if (e.key === 'd') {
                 showNextImage();
             } else if (e.key === 'ArrowLeft') {
-                setImageState(false);
+                setImageState('fp');
+                setTimeout(showNextImage, 1000);
             } else if (e.key === 'ArrowRight') {
-                setImageState(true);
+                setImageState('tp');
+                setTimeout(showNextImage, 1000);
+            } else if (e.key === 'ArrowUp') {
+                setImageState('nmm');
+                setTimeout(showNextImage, 1000);
             }
         }
     });
 });
 
 function showMillFolders() {
+    gosubmitBack();
+    $('#millFolders').html('');
+    $('#folderTitle').html('');
     var selectedDate = $('.datepicker').datepicker('getDate');
     var formattedDate = selectedDate.getFullYear() + "-" + (selectedDate.getMonth() + 1) + "-" + selectedDate.getDate();
 
@@ -42,7 +52,7 @@ function showMillFolders() {
             missing_date_folders = response["missing_date_folders"];
             validation_folder = response["validation_folder"];
             alert_message = response["alert_message"];
-
+            error_databases = response["error_databases"];
             if (alert_message == "false") {
                 showErrorDialog("No records found for the selected date.");
                 return;
@@ -75,7 +85,6 @@ function showErrorDialog(message) {
 }
 
 function updateFolderList(millFoldersWithRollIDs) {
-    console.log("alert_message", alert_message);
     var folderList = "<ul>";
     millFoldersWithRollIDs.forEach(function (millData) {
         for (var millName in millData) {
@@ -87,7 +96,6 @@ function updateFolderList(millFoldersWithRollIDs) {
     folderList += "</ul>";
 
     $('#millFolders').html(folderList);
-    $('#backButton').removeClass('d-none');
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
 }
@@ -107,7 +115,6 @@ function showMissingDateFoldersDialog(missing_date_folders) {
         className: 'custom-dialog'
     });
 }
-
 
 function showImages(millFolder, imageData) {
     var imageList = "<div class='image-container'>";
@@ -130,54 +137,205 @@ function showImages(millFolder, imageData) {
     $('#millFolders').hide();
     $('#backButton').removeClass('d-none');
     $('#submitBtn').removeClass('d-none');
+
 }
 
 function goBack() {
     $('#millFolders').show();
     $('#backButton').addClass('d-none');
+
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
 }
 
 function submitImages() {
-    currentImages.forEach(function (imageUrl) {
-        var isTruePositive = imageStates[imageUrl];
+    var anyImageSelected = Object.values(imageStates).some(function (state) {
+        return state !== undefined;
+    });
 
-        if (isTruePositive !== undefined) {
-            var millName = getMillNameFromUrl(imageUrl);
+    var allImagesMarked = currentImages.every(function (imageUrl) {
+        return imageStates[imageUrl] !== undefined;
+    });
 
-            if (millName) {
-                var imageLabel = getImageLabelFromUrl(imageUrl);
-                var rollNumber = getRollNumberFromUrl(imageUrl);
-                var date = getDateFromUrl(imageUrl);
-                var machine_name = getMillMachineNameFromUrl(imageUrl);
+    if (!anyImageSelected) {
+        showErrorDialog("No images are selected for submission.");
+        return;
+    }
 
-                if (imageLabel && rollNumber && date) {
-                    var folderPath = validation_folder + millName + "/" + machine_name + "/" + rollNumber + "/" + date + "/" + imageLabel + "/" + (isTruePositive ? "tp" : "fp");
+    if (!allImagesMarked) {
+        showErrorDialog("You must mark all images before submission.");
+        return;
+    }
 
-                    $.ajax({
-                        type: "POST",
-                        url: "/move-image",
-                        data: {
-                            source: imageUrl,
-                            destination: folderPath
-                        },
-                        success: function (response) {
-                            console.log(response);
-                        },
-                        error: function (xhr, status, error) {
-                            console.error(xhr.responseText);
-                        }
-                    });
-                } else {
-                    console.log("Not work ");
+    bootbox.confirm({
+        message: "Do you want to save these subtracted images?",
+        buttons: {
+            confirm: {
+                label: 'Yes',
+                className: 'btn-primary'
+            },
+            cancel: {
+                label: 'No',
+                className: 'btn-secondary'
+            }
+        },
+        callback: function (result) {
+            if (result) {
+                showSecondaryDialog();
+            } else {
+                bootbox.hideAll();
+            }
+        }
+    });
+}
+
+function showQualityCheckingFrame() {
+    $('#qualityCheckingFrame').removeClass('d-none');
+    $('#backButtonQuaty').removeClass('d-none');
+    $('#qualityCheckingHeading').removeClass('d-none');
+    $('#saveButton').removeClass('d-none');
+    showSeparateTpFpNmmImages();
+}
+
+function showSecondaryDialog() {
+    var tpCount = Object.values(imageStates).filter(function (state) {
+        return state === 'tp';
+    }).length;
+    var fpCount = Object.values(imageStates).filter(function (state) {
+        return state === 'fp';
+    }).length;
+    var nmmCount = Object.values(imageStates).filter(function (state) {
+        return state === 'nmm';
+    }).length;
+
+    var message = "Total TP count: " + tpCount + "<br>" +
+        "Total FP count: " + fpCount + "<br>" +
+        "Total NMM count: " + nmmCount + "<br>" +
+        "<input type='text' id='comment' placeholder='Enter your comment...' class='form-control mt-3'>";
+
+    bootbox.dialog({
+        title: "Secondary Dialog",
+        message: message,
+        buttons: {
+            submit: {
+                label: "Submit",
+                className: "btn-primary",
+                callback: function () {
+                    var comment = $('#comment').val();
+                    proceedWithSubmission();
                 }
             }
         }
     });
+}
 
-    alert('Images submitted!');
-    goBack();
+function proceedWithSubmission() {
+    var submissionData = [];
+    var totalTPCount = 0;
+    var totalFPCount = 0;
+    var totalNMMCount = 0;
+    var comment = $('#comment').val();
+
+    currentImages.forEach(function (imageUrl) {
+        var state = imageStates[imageUrl];
+
+        if (state !== undefined) {
+            var millName = getMillNameFromUrl(imageUrl);
+            var machineName = getMillMachineNameFromUrl(imageUrl);
+            var rollNumber = getRollNumberFromUrl(imageUrl);
+            var date = getDateFromUrl(imageUrl);
+            var folderPath = validation_folder + millName + "/" + machineName + "/" + rollNumber + "/" + date + "/" + state;
+            var imageData = new FormData();
+
+            imageData.append('source', imageUrl);
+            imageData.append('destination', folderPath);
+            imageData.append('mill_name', millName);
+            imageData.append('machine_name', machineName);
+            imageData.append('date', date);
+            imageData.append('total_fp_count', 0);
+            imageData.append('total_tp_count', 0);
+            imageData.append('total_nmm_count', 0);
+            imageData.append('comment', comment);
+
+            if (state === 'tp') {
+                totalTPCount++;
+            } else if (state === 'fp') {
+                totalFPCount++;
+            } else if (state === 'nmm') {
+                totalNMMCount++;
+            }
+
+            submissionData.push(imageData);
+        }
+    });
+
+    submissionData.forEach(function (imageData) {
+        imageData.set('total_fp_count', totalFPCount);
+        imageData.set('total_tp_count', totalTPCount);
+        imageData.set('total_nmm_count', totalNMMCount);
+    });
+
+    submissionData.forEach(function (imageData) {
+        console.log(imageData.get('source'));
+        $.ajax({
+            type: "POST",
+            url: "/move-image",
+            data: imageData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                console.log(response);
+            },
+            error: function (xhr, status, error) {
+                console.error(xhr.responseText);
+            }
+        });
+    });
+
+    gosubmitBack();
+}
+
+function showSeparateTpFpNmmImages() {
+    var tpImages = [];
+    var fpImages = [];
+    var nmmImages = [];
+
+    currentImages.forEach(function (imageUrl) {
+        var state = imageStates[imageUrl];
+
+        if (state === 'tp') {
+            tpImages.push(imageUrl);
+        } else if (state === 'fp') {
+            fpImages.push(imageUrl);
+        } else if (state === 'nmm') {
+            nmmImages.push(imageUrl);
+        }
+    });
+
+    if (tpImages.length > 0) {
+        showImagesSeparately('True Positive', tpImages);
+    }
+
+    if (fpImages.length > 0) {
+        showImagesSeparately('False Positive', fpImages);
+    }
+
+    if (nmmImages.length > 0) {
+        showImagesSeparately('Name Mismatch', nmmImages);
+    }
+}
+
+function showImagesSeparately(category, images) {
+    var imageList = "<div class='image-container' style='display: flex; flex-wrap: wrap; justify-content: start;'>";
+
+    images.forEach(function (imageUrl) {
+        imageList += "<img src='" + imageUrl + "' alt='Image' style='width: 200px; height: auto; margin: 10px;'>";
+    });
+    imageList += "</div>";
+
+    $('#qualityCheckingFrame').append("<h3 style='text-align: left;'>" + category + "</h3>");
+    $('#qualityCheckingFrame').append(imageList);
+
 }
 
 function getMillNameFromUrl(imageUrl) {
@@ -205,6 +363,11 @@ function getImageLabelFromUrl(imageUrl) {
 }
 
 function openImageDialog(imageUrl) {
+    var parts = imageUrl.split('/');
+    var label = parts[parts.length - 2];
+
+    $('#imageLabel').text("Label: " + label);
+
     $('#imageFrame').attr('src', imageUrl);
     $('#imageModal').modal('show');
 
@@ -213,29 +376,46 @@ function openImageDialog(imageUrl) {
     }).get();
 
     currentImageIndex = currentImages.indexOf(imageUrl);
+
+    updateStatus(imageStates[imageUrl]);
+    updateImageBorder(imageUrl);
+
+    $('#imageCount').text((currentImageIndex + 1) + "/" + currentImages.length);
+
+    updateSelectedImageBorder();
+}
+
+function updateSelectedImageBorder() {
+    var currentImageUrl = currentImages[currentImageIndex];
+    updateImageBorder(currentImageUrl, imageStates[currentImageUrl]);
 }
 
 function showPreviousImage() {
     if (currentImageIndex > 0) {
         currentImageIndex--;
-        $('#imageFrame').attr('src', currentImages[currentImageIndex]);
-        updateImageBorder(currentImages[currentImageIndex]);
+        var imageUrl = currentImages[currentImageIndex];
+        $('#imageFrame').attr('src', imageUrl);
+        openImageDialog(imageUrl);
+        updateSelectedImageBorder();
     }
 }
 
 function showNextImage() {
     if (currentImageIndex < currentImages.length - 1) {
         currentImageIndex++;
-        $('#imageFrame').attr('src', currentImages[currentImageIndex]);
-        updateImageBorder(currentImages[currentImageIndex]);
+        var imageUrl = currentImages[currentImageIndex];
+        $('#imageFrame').attr('src', imageUrl);
+        openImageDialog(imageUrl);
+        updateSelectedImageBorder();
     }
 }
 
-function setImageState(isTruePositive) {
+function setImageState(state) {
     var currentImageUrl = currentImages[currentImageIndex];
-    imageStates[currentImageUrl] = isTruePositive;
+    imageStates[currentImageUrl] = state;
 
-    updateImageBorder(currentImageUrl);
+    updateImageBorder(currentImageUrl, state);
+    updateStatus(state);
 
     var anyImageSelected = Object.values(imageStates).some(function (state) {
         return state !== undefined;
@@ -246,37 +426,88 @@ function setImageState(isTruePositive) {
     } else {
         $('#submitBtn').hide();
     }
+
+    updateSelectedImageBorder();
 }
 
-function updateImageBorder(imageUrl) {
-    var isTruePositive = imageStates[imageUrl];
-    var $image = $('[src="' + imageUrl + '"]');
+function updateStatus(state) {
+    var statusText = '';
 
-    if (isTruePositive === undefined) {
-        $image.css({
-            'border': 'none',
-            'margin': '5px'
-        });
-    } else {
-        if (isTruePositive) {
-            $image.css({
-                'border': '4px solid green',
-                'margin': '5px'
-            });
-        } else {
-            $image.css({
-                'border': '4px solid red',
-                'margin': '5px'
-            });
-        }
+    switch (state) {
+        case 'tp':
+            statusText = 'True Positive';
+            break;
+        case 'fp':
+            statusText = 'False Positive';
+            break;
+        case 'nmm':
+            statusText = 'Name Mismatch';
+            break;
+        default:
+            statusText = '';
     }
+
+    $('#status').text(statusText);
+}
+
+function updateImageBorder(imageUrl, state) {
+    var $image = $('[src="' + imageUrl + '"]');
+    var borderColor = '';
+
+    switch (state) {
+        case 'tp':
+            borderColor = 'green';
+            break;
+        case 'fp':
+            borderColor = 'red';
+            break;
+        case 'nmm':
+            borderColor = 'blue';
+            break;
+        default:
+            borderColor = 'none';
+    }
+
+    $image.css({
+        'border': borderColor !== 'none' ? '4px solid ' + borderColor : 'none',
+        'margin': '5px'
+    });
 }
 
 function goBack() {
+    bootbox.confirm({
+        message: "Are you sure you want to go back?",
+        buttons: {
+            confirm: {
+                label: 'Yes',
+                className: 'btn-primary'
+            },
+            cancel: {
+                label: 'No',
+                className: 'btn-secondary'
+            }
+        },
+        callback: function (result) {
+            if (result) {
+                $('#millFolders').show();
+                $('#backButton').addClass('d-none');
+                $('#imageDisplay').html('');
+                $('#folderTitle').html('');
+                $('#submitBtn').addClass('d-none');
+
+                currentImages = [];
+                imageStates = {};
+            }
+        }
+    });
+}
+
+function gosubmitBack() {
     $('#millFolders').show();
     $('#backButton').addClass('d-none');
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
+    $('#submitBtn').addClass('d-none');
 
     currentImages = [];
     imageStates = {};
@@ -298,4 +529,13 @@ function getDateFromUrl(imageUrl) {
         return match[0];
     }
     return null;
+}
+
+function hideQualityCheckingFrame() {
+    $('#qualityCheckingFrame').addClass('d-none');
+    $('#backButton').removeClass('d-none');
+
+    currentImages.forEach(function (imageUrl) {
+        updateImageBorder(imageUrl, imageStates[imageUrl]);
+    });
 }

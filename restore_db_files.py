@@ -50,7 +50,12 @@ class DBRestorer:
             exists = cur.fetchone()
 
             if not exists:
+                # Create the database if it doesn't exist
                 cur.execute(f'CREATE DATABASE "{db_name}"')
+            else:
+                # Drop the database if it already exists
+                cur.execute(f'DROP DATABASE IF EXISTS "{db_name}"')
+                print(f"The existing database '{db_name}' has been deleted.")
 
             db_file_path = os.path.join(self.db_folder_path, file_name)
             os.system(

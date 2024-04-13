@@ -64,21 +64,31 @@ class Database:
                 (selected_date,),
             )
             num_alarm_types = source_cursor.fetchone()[0]
-            logging.basicConfig(
-                filename="log.txt",
-                level=logging.INFO,
-                format="%(asctime)s - %(levelname)s - %(message)s",
+
+            source_cursor.execute(
+                "SELECT defecttyp_id, timestamp FROM defect_details WHERE DATE(timestamp) = %s  AND add_imagepath IS NOT NULL ",
+                (selected_date,),
             )
-            logging.info("######################################")
-            logging.info("db name: %s", db_name)
-            logging.info("Selected Date: %s", selected_date)
-            logging.info("Defect Data: %s", len(defect_data))
-            logging.info("Rotation Data: %s", rotation_data)
-            logging.info("Average RPM: %s", avg_rpm)
-            logging.info("Machine Program Data: %s", machine_program_data)
-            logging.info("Number of Alarm Types: %s", num_alarm_types)
-            logging.info("Database Name: %s", db_name)
-            logging.info("######################################")
+            add_defect_data = source_cursor.fetchall()
+
+            # logging.basicConfig(
+            #     filename="log.txt",
+            #     level=logging.INFO,
+            #     format="%(asctime)s - %(levelname)s - %(message)s",
+            # )
+
+            # logging.info("######################################")
+            # logging.info("db name: %s", db_name)
+            # logging.info("Selected Date: %s", selected_date)
+            # logging.info("Defect Data: %s", len(defect_data))
+            # logging.info("Rotation Data: %s", rotation_data)
+            # logging.info("Average RPM: %s", avg_rpm)
+            # logging.info("Machine Program Data: %s", machine_program_data)
+            # logging.info("Number of Alarm Types: %s", num_alarm_types)
+            # logging.info("Database Name: %s", db_name)
+            # logging.info("######################################")
+            avg_rpm = avg_rpm if avg_rpm is None else round(avg_rpm)
+
             self.insert_data(
                 selected_date,
                 defect_data,
@@ -87,6 +97,7 @@ class Database:
                 machine_program_data,
                 num_alarm_types,
                 db_name,
+                add_defect_data,
             )
         except psycopg2.Error as e:
             print(f"Error fetching data from database {db_name}:", e)
@@ -105,18 +116,47 @@ class Database:
         machine_program_data,
         alarm_status,
         db_name,
+        add_defect_data,
     ):
+        print("+++++++++++++++++")
+        print("db_name", db_name)
+        print(avg_rpm)
+        print("dat", len(data))
+        print(len(add_defect_data))
+        print("+++++++++++++++++")
+
         try:
+            
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
             defect_counts = {}
             total_revolutions = 0
+
+            # Process data
             if data is not None:
                 for defect_id, _ in data:
                     defect_counts.setdefault(defect_id, 0)
                 for defect_id, _ in data:
                     defect_counts[defect_id] += 1
             defect_counts_json = json.dumps(defect_counts)
+
+            # Process add_defect_data separately
+            add_defect_counts = {}
+            if add_defect_data is not None:
+                for defect_id, _ in add_defect_data:
+                    add_defect_counts.setdefault(defect_id, 0)
+                for defect_id, _ in add_defect_data:
+                    add_defect_counts[defect_id] += 1
+            add_defect_json = json.dumps(add_defect_counts)
+
+            print("+++++++++++++++++")
+            print("db_name", db_name)
+            print("dat", len(data))
+            print(len(add_defect_data))
+            print(add_defect_json)
+            print(defect_counts_json)
+            print("+++++++++++++++++")
+
             gsm = []
             gg = []
             loop_length = []
@@ -143,12 +183,12 @@ class Database:
             knit_types_json = json.dumps(knit_types)
             mill_name, machine_name = db_name.split("_")
             sql_query = """INSERT INTO mill_details (
-                    date, mill_name, machine_name, defect_name, no_of_revolutions, avg_rpm, gsm,
-                    guage, loop_length, fabric_material, machine_rolling_type, total_alarms
+                    date, mill_name, machine_name, mdd_defect_count, no_of_revolutions, avg_rpm, gsm,
+                    guage, loop_length, fabric_material, machine_rolling_type, total_alarms,add_defect_count
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s
                 ) ON CONFLICT (date, mill_name, machine_name) DO UPDATE SET
-                    defect_name = EXCLUDED.defect_name,
+                    mdd_defect_count = EXCLUDED.mdd_defect_count,
                     no_of_revolutions = EXCLUDED.no_of_revolutions,
                     avg_rpm = EXCLUDED.avg_rpm,
                     gsm = EXCLUDED.gsm,
@@ -156,7 +196,8 @@ class Database:
                     loop_length = EXCLUDED.loop_length,
                     fabric_material = EXCLUDED.fabric_material,
                     machine_rolling_type = EXCLUDED.machine_rolling_type,
-                    total_alarms = EXCLUDED.total_alarms;
+                    total_alarms = EXCLUDED.total_alarms,
+                    add_defect_count=EXCLUDED.add_defect_count;
                 """
             destination_cursor.execute(
                 sql_query,
@@ -173,6 +214,7 @@ class Database:
                     fabric_types_json,
                     knit_types_json,
                     alarm_status,
+                    add_defect_json
                 ),
             )
             destination_connection.commit()
@@ -189,7 +231,7 @@ class Database:
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
             destination_cursor.execute(
-                "SELECT date, mill_name,machine_name, machine_brand, machine_dia,model_name,avg_rpm, feeder_type, guage, gsm, loop_length, fabric_material, machine_rolling_type, status, internet_status, uptime, no_of_revolutions, defect_name, total_alarms, true_positive, name_mismatch, false_positive, fabric_parameters, comments, customer_complaints_requirements, cdc_last_done, latest_action FROM mill_details WHERE date = %s",
+                "SELECT  mill_name,machine_name,avg_rpm,guage,gsm,loop_length,uptime,no_of_revolutions,mdd_defect_count,add_defect_count,comments FROM mill_details WHERE date = %s",
                 (selected_date,),
             )
             records = destination_cursor.fetchall()
@@ -250,7 +292,7 @@ class Database:
                     internet_status = %s,
                     uptime = %s,
                     no_of_revolutions = %s,
-                    defect_name = %s,
+                    mdd_defect_count = %s,
                     total_alarms = %s,
                     true_positive = %s,
                     name_mismatch = %s,

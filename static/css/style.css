@@ -46,11 +46,6 @@
     max-height: 250px;
 }
 
-.modal-xl {
-    max-width: 60%;
-    max-height: 60%;
-}
-
 .dashboard-link {
     font-size: 18px;
     text-decoration: none;
@@ -66,4 +61,57 @@
 
 .custom-dialog .modal-body {
     max-height: none;
+}
+
+.shortcut-keys {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.shortcut-keys li {
+    display: inline;
+    margin-right: 10px;
+}
+
+.image-info {
+    display: flex;
+}
+
+.info-item {
+    margin-right: 10px;
+}
+
+#imageLabel {
+    margin-right: 20px;
+}
+
+#qualityCheckingFrame {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background-color: white;
+    z-index: 1000;
+    padding: 20px;
+    align-items: start;
+}
+
+#qualityCheckingFrame h2 {
+    text-align: center;
+    padding-top: 20px;
+    position: static;
+}
+
+#imageModal .modal-dialog {
+    max-width: 70%;
+    width: 70%;
+    overflow-y: hidden;
+}
+
+#imageFrame {
+    width: fit-content;
+    height: fit-content;
 }
