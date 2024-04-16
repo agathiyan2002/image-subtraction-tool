@@ -1,3 +1,5 @@
+var copyvalue = [];
+
 $(document).ready(function () {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
@@ -9,18 +11,6 @@ $(document).ready(function () {
 function fetchMillDetails() {
     var selectedDate = $('#selectedDate').val();
 
-    var subkeyMap = {
-        '1': 'lycra',
-        '2': 'hole',
-        '3': 'shutoff',
-        '4': 'needln',
-        '5': 'oil',
-        '6': 'twoply',
-        '7': 'stopline',
-        '8': 'countmix',
-        '9': 'two_ply'
-    };
-
     $.ajax({
         url: '/dashboard',
         method: 'POST',
@@ -28,46 +18,59 @@ function fetchMillDetails() {
             date: selectedDate
         },
         success: function (response) {
-            $('#dashboardTable tbody').empty();
-            $.each(response, function (index, record) {
-                var row = '<tr>';
-                row += '<td><button type="button" class="btn btn-link edit-btn" data-toggle="modal" data-target="#editModal">Edit</button></td>';
-                row += '<td>' + (index + 1) + '</td>';
-                $.each(record, function (key, value) {
-                    if (value === null) {
-                        row += '<td></td>';
-                    } else if (key === 2) { // Check if it's the second index
-                        var roundedValue = Math.round(parseFloat(value)); // Round to nearest integer
-                        row += '<td>' + roundedValue + '</td>';
-                    } else if (key === 3 || key === 4 || key === 5) { // Check if it's indices 3, 4, or 5
-                        if (value === '[]') {
-                            row += '<td></td>'; // Render empty cell
+            var tableBody = document.getElementById('dashboardTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+
+            copyvalue = [];
+            response.forEach(function (record, index) {
+                copyvalue.push(record);
+                var row = document.createElement('tr');
+
+                var editCell = document.createElement('td');
+                var editButton = document.createElement('button');
+                editButton.setAttribute('type', 'button');
+                editButton.classList.add('btn', 'btn-link', 'edit-btn');
+                editButton.setAttribute('data-toggle', 'modal');
+                editButton.setAttribute('data-target', '#editModal');
+                editButton.textContent = 'Edit';
+                var showDetailsButton = document.createElement('button');
+                showDetailsButton.setAttribute('type', 'button');
+                showDetailsButton.classList.add('btn', 'btn-link', 'show-details-btn');
+                showDetailsButton.textContent = 'Show More';
+                editCell.appendChild(editButton);
+                editCell.appendChild(showDetailsButton);
+                row.appendChild(editCell);
+
+                var indexCell = document.createElement('td');
+                indexCell.textContent = index + 1;
+                row.appendChild(indexCell);
+
+                for (var key = 0; key <= 9; key++) {
+                    var cell = document.createElement('td');
+                    if (record.hasOwnProperty(key)) {
+                        var value = record[key];
+                        if (value === null) {
+                            cell.textContent = '';
+                        } else if (key === 2) {
+                            var roundedValue = Math.round(parseFloat(value));
+                            cell.textContent = roundedValue;
+                        } else if (key === 3 || key === 4 || key === 5) {
+                            cell.textContent = (value === '[]') ? '' : value;
+                        } else if (key === 8) {
+                            if (value && value.length && value[value.length - 1] !== 'total') {
+                                cell.innerHTML = generateSubTable(value);
+                            }
                         } else {
-                            row += '<td>' + value + '</td>'; // Render value
+                            cell.textContent = value;
                         }
-                    } else if (key === 8) {
-                        row += '<td>';
-                        var defectData = JSON.parse(value);
-                        $.each(defectData, function (subkey, subvalue) {
-                            var replacedSubkey = subkeyMap[subkey] || subkey;
-                            row += replacedSubkey + ': ' + subvalue + '<br>';
-                        });
-                        row += '</td>';
-                    } else if (key === 9) {
-                        row += '<td>';
-                        var defectData = JSON.parse(value);
-                        $.each(defectData, function (subkey, subvalue) {
-                            var replacedSubkey = subkeyMap[subkey] || subkey;
-                            row += replacedSubkey + ': ' + subvalue + '<br>';
-                        });
-                        row += '</td>';
+                    } else {
+                        cell.textContent = '';
                     }
-                    else {
-                        row += '<td>' + value + '</td>';
-                    }
-                });
-                row += '</tr>';
-                $('#dashboardTable tbody').append(row);
+                    row.appendChild(cell);
+                }
+
+                tableBody.appendChild(row);
+
             });
         },
         error: function (error) {
@@ -87,33 +90,30 @@ function initializeDashboard() {
 }
 
 function saveChanges() {
+    var selectedDate = $('#selectedDate').val();
+
     var updatedRecord = {
-        date: $('#date').val(),
+        date: selectedDate,
         mill_name: $('#millName').val(),
         machineName: $('#machineName').val(),
+        avgRpm: $('#avgRpm').val(),
+        guage: $('#guage').val(),
+        gsm: $('#gsm').val(),
+        loopLength: $('#loopLength').val(),
+        uptime: $('#uptime').val(),
+        noOfRevolutions: $('#noOfRevolutions').val(),
+        comments: $('#comments').val(),
         machine_brand: $('#machineBrand').val(),
         machineDia: $('#machineDia').val(),
         modelName: $('#modelName').val(),
-        avgRpm: $('#avgRpm').val(),
         feederType: $('#feederType').val(),
-        gauge: $('#gauge').val(),
-        gsm: $('#gsm').val(),
-        loopLength: $('#loopLength').val(),
         fabricMaterial: $('#fabricMaterial').val(),
         machineRollingType: $('#machineRollingType').val(),
         status: $('#status').val(),
         internetStatus: $('#internetStatus').val(),
-        uptime: $('#uptime').val(),
-        noOfRevolutions: $('#noOfRevolutions').val(),
-        defectName: $('#defectName').val(),
         totalAlarms: $('#totalAlarms').val(),
-        truePositive: $('#truePositive').val(),
-        nameMismatch: $('#nameMismatch').val(),
-        falsePositive: $('#falsePositive').val(),
-        fabricParameters: $('#fabricParameters').val(),
-        comments: $('#comments').val(),
-        customerComplaints: $('#customerComplaints').val(),
-        cdc: $('#cdc').val(),
+        customerComplaintsRequirements: $('#customerComplaintsRequirements').val(),
+        cdcLastDone: $('#cdcLastDone').val(),
         latestAction: $('#latestAction').val()
     };
 
@@ -125,7 +125,7 @@ function saveChanges() {
         success: function (response) {
             console.log('Record updated successfully:', response);
             $('#editModal').modal('hide');
-            fetchMillDetails(); // Refresh the table after saving changes
+            fetchMillDetails();
         },
         error: function (error) {
             console.error('Error updating record:', error);
@@ -139,35 +139,82 @@ $(document).ready(function () {
 
     $('#dashboardTable').on('click', '.edit-btn', function () {
         $('#editModal').modal('show');
+        var index = $(this).closest('tr').index();
+        var record = copyvalue[index];
+        if (record) {
+            $('#millName').val(record[0]);
+            $('#machineName').val(record[1]);
+            $('#avgRpm').val(record[2]);
+            $('#guage').val(record[3]);
+            $('#gsm').val(record[4]);
+            $('#loopLength').val(record[5]);
+            $('#uptime').val(record[6]);
+            $('#noOfRevolutions').val(record[7]);
+            $('#comments').val(record[9]);
+            $('#machineBrand').val(record[10]);
+            $('#machineDia').val(record[11]);
+            $('#modelName').val(record[12]);
+            $('#feederType').val(record[13]);
+            $('#fabricMaterial').val(record[14]);
+            $('#machineRollingType').val(record[15]);
+            $('#status').val(record[16]);
+            $('#internetStatus').val(record[17]);
+            $('#totalAlarms').val(record[18]);
+            $('#customerComplaintsRequirements').val(record[19]);
+            $('#cdcLastDone').val(record[20]);
+            $('#latestAction').val(record[21]);
+        } else {
+            console.log("Record not found.");
+        }
+    });
 
-        var row = $(this).closest('tr');
+    var keyMap = {
+        '10': 'machine_brand',
+        '11': 'machine_dia',
+        '12': 'model_name',
+        '13': 'feeder_type',
+        '14': 'fabric_material',
+        '15': 'machine_rolling_type',
+        '16': 'status',
+        '17': 'internet_status',
+        '18': 'total_alarms',
+        '19': 'customer_complaints_requirements',
+        '20': 'cdc_last_done',
+        '21': 'latest_action'
+    };
 
-        $('#date').val(row.find('td:eq(2)').text());
-        $('#millName').val(row.find('td:eq(3)').text());
-        $('#machineName').val(row.find('td:eq(4)').text());
-        $('#machineBrand').val(row.find('td:eq(5)').text());
-        $('#machineDia').val(row.find('td:eq(6)').text());
-        $('#modelName').val(row.find('td:eq(7)').text());
-        $('#avgRpm').val(row.find('td:eq(8)').text());
-        $('#feederType').val(row.find('td:eq(9)').text());
-        $('#gauge').val(row.find('td:eq(10)').text());
-        $('#gsm').val(row.find('td:eq(11)').text());
-        $('#loopLength').val(row.find('td:eq(12)').text());
-        $('#fabricMaterial').val(row.find('td:eq(13)').text());
-        $('#machineRollingType').val(row.find('td:eq(14)').text());
-        $('#status').val(row.find('td:eq(15)').text());
-        $('#internetStatus').val(row.find('td:eq(16)').text());
-        $('#uptime').val(row.find('td:eq(17)').text());
-        $('#noOfRevolutions').val(row.find('td:eq(18)').text());
-        $('#defectName').val(row.find('td:eq(19)').text());
-        $('#totalAlarms').val(row.find('td:eq(20)').text());
-        $('#truePositive').val(row.find('td:eq(21)').text());
-        $('#nameMismatch').val(row.find('td:eq(22)').text());
-        $('#falsePositive').val(row.find('td:eq(23)').text());
-        $('#fabricParameters').val(row.find('td:eq(24)').text());
-        $('#comments').val(row.find('td:eq(25)').text());
-        $('#customerComplaints').val(row.find('td:eq(26)').text());
-        $('#cdc').val(row.find('td:eq(27)').text());
-        $('#latestAction').val(row.find('td:eq(28)').text());
+    $('#dashboardTable').on('click', '.show-details-btn', function () {
+        var index = $(this).closest('tr').index();
+        var record = copyvalue[index];
+        console.log('more details Record:', record);
+
+        $('#moreDetailsTableBody').empty();
+        for (var key = 10; key <= 21; key++) {
+            var value = record[key];
+            var actualKey = keyMap[key];
+            var displayValue = (value === null || value.length === 0) ? 'Value not entered' : value;
+            $('#moreDetailsTableBody').append('<tr><td>' + actualKey + '</td><td>' + displayValue + '</td></tr>');
+        }
+        $('#moreDetailsModal').modal('show');
     });
 });
+
+function generateSubTable(subTableData) {
+    if (!subTableData || subTableData.length === 0) {
+        return '';
+    }
+
+    var subTable = '<table class="sub-table">';
+    subTable += '<thead><tr><th>Defect Name</th><th>TP</th><th>FP</th><th>NMM</th><th>MDD</th><th>ADD</th></tr></thead>';
+    subTable += '<tbody>';
+    subTableData.forEach(function (row) {
+        subTable += '<tr>';
+        row.forEach(function (cell) {
+            subTable += '<td>' + cell + '</td>';
+        });
+        subTable += '</tr>';
+    });
+    subTable += '</tbody></table>';
+    console.log(subTable);
+    return subTable;
+}

@@ -107,6 +107,14 @@ class Database:
                 source_cursor.close()
                 source_connection.close()
 
+    def map_keys_to_names(counts, subkeyMap):
+        mapped_counts = {}
+        for key, value in counts.items():
+            if str(key) in subkeyMap:
+                mapped_key = subkeyMap[str(key)]
+                mapped_counts[mapped_key] = value
+        return mapped_counts
+
     def insert_data(
         self,
         selected_date,
@@ -118,15 +126,21 @@ class Database:
         db_name,
         add_defect_data,
     ):
-        print("+++++++++++++++++")
-        print("db_name", db_name)
-        print(avg_rpm)
-        print("dat", len(data))
-        print(len(add_defect_data))
-        print("+++++++++++++++++")
+
+        subkeyMap = {
+            "1": "lycra",
+            "2": "hole",
+            "3": "shutoff",
+            "4": "needln",
+            "5": "oil",
+            "6": "twoply",
+            "7": "stopline",
+            "8": "countmix",
+            "9": "two_ply",
+        }
 
         try:
-            
+
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
             defect_counts = {}
@@ -135,27 +149,28 @@ class Database:
             # Process data
             if data is not None:
                 for defect_id, _ in data:
-                    defect_counts.setdefault(defect_id, 0)
+                    name = subkeyMap.get(str(defect_id))
+                    defect_counts.setdefault(name, 0)
                 for defect_id, _ in data:
-                    defect_counts[defect_id] += 1
+                    name = subkeyMap.get(str(defect_id))
+                    defect_counts[name] += 1
             defect_counts_json = json.dumps(defect_counts)
 
             # Process add_defect_data separately
             add_defect_counts = {}
             if add_defect_data is not None:
                 for defect_id, _ in add_defect_data:
-                    add_defect_counts.setdefault(defect_id, 0)
+                    name = subkeyMap.get(str(defect_id))
+                    add_defect_counts.setdefault(name, 0)
                 for defect_id, _ in add_defect_data:
-                    add_defect_counts[defect_id] += 1
+                    name = subkeyMap.get(str(defect_id))
+                    add_defect_counts[name] += 1
             add_defect_json = json.dumps(add_defect_counts)
 
-            print("+++++++++++++++++")
-            print("db_name", db_name)
-            print("dat", len(data))
-            print(len(add_defect_data))
-            print(add_defect_json)
-            print(defect_counts_json)
-            print("+++++++++++++++++")
+            # print("+++++++++++++++++")
+            # print(add_defect_json)
+            # print(defect_counts_json)
+            # print("+++++++++++++++++")
 
             gsm = []
             gg = []
@@ -214,7 +229,7 @@ class Database:
                     fabric_types_json,
                     knit_types_json,
                     alarm_status,
-                    add_defect_json
+                    add_defect_json,
                 ),
             )
             destination_connection.commit()
@@ -231,10 +246,11 @@ class Database:
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
             destination_cursor.execute(
-                "SELECT  mill_name,machine_name,avg_rpm,guage,gsm,loop_length,uptime,no_of_revolutions,mdd_defect_count,add_defect_count,comments FROM mill_details WHERE date = %s",
+                "SELECT mill_name,machine_name,avg_rpm,guage,gsm,loop_length,uptime,no_of_revolutions,mdd_defect_count,add_defect_count,count_details,comments,machine_brand, machine_dia, model_name, feeder_type, fabric_material, machine_rolling_type, status, internet_status, total_alarms, customer_complaints_requirements, cdc_last_done, latest_action  FROM mill_details WHERE date = %s",
                 (selected_date,),
             )
             records = destination_cursor.fetchall()
+
             return records
         except psycopg2.Error as e:
             print("Error fetching records:", e)
@@ -246,6 +262,7 @@ class Database:
 
     def update_records(self, updated_record):
         try:
+            print(updated_record)
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
             date = updated_record.get("date")
@@ -254,11 +271,32 @@ class Database:
             machineDia = updated_record.get("machineDia")
             modelName = updated_record.get("modelName")
             machineName = updated_record.get("machineName")
+
+            # Handle empty or unexpected values
             avgRpm = updated_record.get("avgRpm")
-            feederType = updated_record.get("feederType")
-            gauge = updated_record.get("gauge")
+            if avgRpm == "":
+                avgRpm = None  # Convert empty string to NULL
+
+            # Handle gauge, gsm, and loopLength
+            gauge = updated_record.get("guage")
+            if gauge == "[]":
+                gauge = None  # Convert '[]' to NULL
+
             gsm = updated_record.get("gsm")
+            if gsm == "[]":
+                gsm = None  # Convert '[]' to NULL
+
             loopLength = updated_record.get("loopLength")
+            if loopLength == "[]":
+                loopLength = None  # Convert '[]' to NULL
+
+            # Ensure noOfRevolutions is numeric
+            try:
+                noOfRevolutions = int(updated_record.get("noOfRevolutions"))
+            except (TypeError, ValueError):
+                noOfRevolutions = None  # Handle non-numeric values
+
+            feederType = updated_record.get("feederType")
             fabricMaterial = updated_record.get("fabricMaterial")
             machineRollingType = updated_record.get("machineRollingType")
             status = updated_record.get("status")
@@ -272,9 +310,14 @@ class Database:
             falsePositive = updated_record.get("falsePositive")
             fabricParameters = updated_record.get("fabricParameters")
             comments = updated_record.get("comments")
-            customerComplaints = updated_record.get("customerComplaints")
-            cdc = updated_record.get("cdc")
+            customerComplaints = updated_record.get("customerComplaintsRequirements")
+            cdc = updated_record.get("cdcLastDone")
             latestAction = updated_record.get("latestAction")
+            # add_defect_count = updated_record.get("addDefectCount")
+            # print("+++++++++++++++")
+            # print("cdc", cdc)
+            # print("custormer", customerComplaints)
+            # print("+++++++++++++++++")
             sql_query = """
                 UPDATE mill_details
                 SET 
@@ -292,7 +335,6 @@ class Database:
                     internet_status = %s,
                     uptime = %s,
                     no_of_revolutions = %s,
-                    mdd_defect_count = %s,
                     total_alarms = %s,
                     true_positive = %s,
                     name_mismatch = %s,
@@ -304,6 +346,7 @@ class Database:
                     latest_action = %s
                 WHERE date = %s And mill_name=%s And machine_name=%s
             """
+
             destination_cursor.execute(
                 sql_query,
                 (
@@ -321,7 +364,6 @@ class Database:
                     internetStatus,
                     uptime,
                     noOfRevolutions,
-                    defectName,
                     totalAlarms,
                     truePositive,
                     nameMismatch,

@@ -236,6 +236,9 @@ function proceedWithSubmission() {
     var totalNMMCount = 0;
     var comment = $('#comment').val();
 
+    // Initialize count details object
+    var countDetails = {};
+
     currentImages.forEach(function (imageUrl) {
         var state = imageStates[imageUrl];
 
@@ -244,45 +247,63 @@ function proceedWithSubmission() {
             var machineName = getMillMachineNameFromUrl(imageUrl);
             var rollNumber = getRollNumberFromUrl(imageUrl);
             var date = getDateFromUrl(imageUrl);
-            var folderPath = validation_folder + millName + "/" + machineName + "/" + rollNumber + "/" + date + "/" + state;
-            var imageData = new FormData();
+            var label = getLabelFromUrl(imageUrl);
 
-            imageData.append('source', imageUrl);
-            imageData.append('destination', folderPath);
-            imageData.append('mill_name', millName);
-            imageData.append('machine_name', machineName);
-            imageData.append('date', date);
-            imageData.append('total_fp_count', 0);
-            imageData.append('total_tp_count', 0);
-            imageData.append('total_nmm_count', 0);
-            imageData.append('comment', comment);
+            var folderPath = validation_folder + millName + "/" + machineName + "/" + rollNumber + "/" + date + "/" + state;
+            var imageData = {
+                source: imageUrl,
+                destination: folderPath,
+                mill_name: millName,
+                machine_name: machineName,
+                date: date,
+                count_details: [], // Initialize count details array
+                comment: comment
+            };
+
+            // Update count details
+            if (!countDetails[label]) {
+                countDetails[label] = { label: label, tp: 0, fp: 0, nmm: 0 };
+            }
 
             if (state === 'tp') {
                 totalTPCount++;
+                countDetails[label].tp++;
             } else if (state === 'fp') {
                 totalFPCount++;
+                countDetails[label].fp++;
             } else if (state === 'nmm') {
                 totalNMMCount++;
+                countDetails[label].nmm++;
             }
 
             submissionData.push(imageData);
         }
     });
 
-    submissionData.forEach(function (imageData) {
-        imageData.set('total_fp_count', totalFPCount);
-        imageData.set('total_tp_count', totalTPCount);
-        imageData.set('total_nmm_count', totalNMMCount);
+    // Create count details array from the countDetails object
+    var countDetailsArray = Object.values(countDetails);
+    // Add total count to countDetails object
+    countDetailsArray.push({
+        total: {
+            total_tp_count: totalTPCount,
+            total_fp_count: totalFPCount,
+            total_nmm_count: totalNMMCount
+        }
     });
 
     submissionData.forEach(function (imageData) {
-        console.log(imageData.get('source'));
+        // Assign count details array to imageData object
+        imageData.count_details = countDetailsArray;
+    });
+
+    submissionData.forEach(function (imageData) {
+        console.log(imageData);
         $.ajax({
             type: "POST",
             url: "/move-image",
-            data: imageData,
+            data: JSON.stringify(imageData), // Serialize the object
             processData: false,
-            contentType: false,
+            contentType: 'application/json', // Set content type to JSON
             success: function (response) {
                 console.log(response);
             },
@@ -290,10 +311,20 @@ function proceedWithSubmission() {
                 console.error(xhr.responseText);
             }
         });
+        
     });
 
     gosubmitBack();
 }
+
+function getLabelFromUrl(imageUrl) {
+    var parts = imageUrl.split('/');
+    if (parts.length >= 2) {
+        return parts[parts.length - 2];
+    }
+    return null;
+}
+
 
 function showSeparateTpFpNmmImages() {
     var tpImages = [];

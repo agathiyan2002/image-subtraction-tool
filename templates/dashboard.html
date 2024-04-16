@@ -44,7 +44,7 @@
                     <table id="dashboardTable" class="table table-bordered">
                         <thead>
                             <tr>
-                                <th>Edit</th> 
+                                <th>Option</th>
                                 <th>s.no</th>
                                 <!-- <th>Date</th> -->
                                 <th>Mill Name</th>
@@ -63,8 +63,8 @@
                                 <!-- <th>Internet Status</th> -->
                                 <th>Uptime</th>
                                 <th>No of Revolutions</th>
-                                <th>MDD Defect Count</th>
-                                <th>Add Defect Count</th>
+                                <th> Defect Count</th>
+                                <!-- <th>Add Defect Count</th> -->
                                 <!-- <th>Total Alarms</th> -->
                                 <!-- <th>True Positive</th> -->
                                 <!-- <th>name mismatch</th> -->
@@ -99,17 +99,51 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="date">Date</label>
-                        <input type="text" class="form-control" id="date" placeholder="Enter Date">
-                    </div>
-                    <div class="form-group">
                         <label for="millName">Mill Name</label>
                         <input type="text" class="form-control" id="millName" placeholder="Enter Mill Name">
                     </div>
-
                     <div class="form-group">
                         <label for="machineName">Machine Name</label>
                         <input type="text" class="form-control" id="machineName" placeholder="Enter Machine Name">
+                    </div>
+                    <div class="form-group">
+                        <label for="avgRpm">Average RPM</label>
+                        <input type="text" class="form-control" id="avgRpm" placeholder="Enter Average RPM">
+                    </div>
+                    <div class="form-group">
+                        <label for="guage">Gauge</label>
+                        <input type="text" class="form-control" id="guage" placeholder="Enter Gauge">
+                    </div>
+                    <div class="form-group">
+                        <label for="gsm">GSM</label>
+                        <input type="text" class="form-control" id="gsm" placeholder="Enter GSM">
+                    </div>
+                    <div class="form-group">
+                        <label for="loopLength">Loop Length</label>
+                        <input type="text" class="form-control" id="loopLength" placeholder="Enter Loop Length">
+                    </div>
+                    <div class="form-group">
+                        <label for="uptime">Uptime</label>
+                        <input type="text" class="form-control" id="uptime" placeholder="Enter Uptime">
+                    </div>
+                    <div class="form-group">
+                        <label for="noOfRevolutions">No of Revolutions</label>
+                        <input type="text" class="form-control" id="noOfRevolutions"
+                            placeholder="Enter No of Revolutions">
+                    </div>
+                    <!-- <div class="form-group">
+                        <label for="mddDefectCount"> Defect Count</label>
+                        <input type="text" class="form-control" id="mddDefectCount"
+                            placeholder="Enter MDD Defect Count">
+                    </div> -->
+                    <!-- <div class="form-group">
+                        <label for="addDefectCount">ADD Defect Count</label>
+                        <input type="text" class="form-control" id="addDefectCount"
+                            placeholder="Enter ADD Defect Count">
+                    </div> -->
+                    <div class="form-group">
+                        <label for="comments">Comments</label>
+                        <input type="text" class="form-control" id="comments" placeholder="Enter Comments">
                     </div>
                     <div class="form-group">
                         <label for="machineBrand">Machine Brand</label>
@@ -123,26 +157,9 @@
                         <label for="modelName">Model Name</label>
                         <input type="text" class="form-control" id="modelName" placeholder="Enter Model Name">
                     </div>
-
-                    <div class="form-group">
-                        <label for="avgRpm">Average RPM</label>
-                        <input type="text" class="form-control" id="avgRpm" placeholder="Enter Average RPM">
-                    </div>
                     <div class="form-group">
                         <label for="feederType">Feeder Type</label>
                         <input type="text" class="form-control" id="feederType" placeholder="Enter Feeder Type">
-                    </div>
-                    <div class="form-group">
-                        <label for="gauge">Gauge</label>
-                        <input type="text" class="form-control" id="gauge" placeholder="Enter Gauge">
-                    </div>
-                    <div class="form-group">
-                        <label for="gsm">GSM</label>
-                        <input type="text" class="form-control" id="gsm" placeholder="Enter GSM">
-                    </div>
-                    <div class="form-group">
-                        <label for="loopLength">Loop Length</label>
-                        <input type="text" class="form-control" id="loopLength" placeholder="Enter Loop Length">
                     </div>
                     <div class="form-group">
                         <label for="fabricMaterial">Fabric Material</label>
@@ -162,51 +179,17 @@
                         <input type="text" class="form-control" id="internetStatus" placeholder="Enter Internet Status">
                     </div>
                     <div class="form-group">
-                        <label for="uptime">Uptime</label>
-                        <input type="text" class="form-control" id="uptime" placeholder="Enter Uptime">
-                    </div>
-                    <div class="form-group">
-                        <label for="noOfRevolutions">No of Revolutions</label>
-                        <input type="text" class="form-control" id="noOfRevolutions"
-                            placeholder="Enter No of Revolutions">
-                    </div>
-                    <div class="form-group">
-                        <label for="defectName">Defect Name</label>
-                        <input type="text" class="form-control" id="defectName" placeholder="Enter Defect Name">
-                    </div>
-                    <div class="form-group">
                         <label for="totalAlarms">Total Alarms</label>
                         <input type="text" class="form-control" id="totalAlarms" placeholder="Enter Total Alarms">
                     </div>
                     <div class="form-group">
-                        <label for="truePositive">True Positive</label>
-                        <input type="text" class="form-control" id="truePositive" placeholder="Enter True Positive">
-                    </div>
-                    <div class="form-group">
-                        <label for="nameMismatch">Name Mismatch</label>
-                        <input type="text" class="form-control" id="nameMismatch" placeholder="Enter Name Mismatch">
-                    </div>
-                    <div class="form-group">
-                        <label for="falsePositive">False Positive</label>
-                        <input type="text" class="form-control" id="falsePositive" placeholder="Enter False Positive">
-                    </div>
-                    <div class="form-group">
-                        <label for="fabricParameters">Fabric Parameters</label>
-                        <input type="text" class="form-control" id="fabricParameters"
-                            placeholder="Enter Fabric Parameters">
-                    </div>
-                    <div class="form-group">
-                        <label for="comments">Comments</label>
-                        <input type="text" class="form-control" id="comments" placeholder="Enter Comments">
-                    </div>
-                    <div class="form-group">
-                        <label for="customerComplaints">Customer Complaints / Requirements</label>
-                        <input type="text" class="form-control" id="customerComplaints"
+                        <label for="customerComplaintsRequirements">Customer Complaints / Requirements</label>
+                        <input type="text" class="form-control" id="customerComplaintsRequirements"
                             placeholder="Enter Customer Complaints / Requirements">
                     </div>
                     <div class="form-group">
-                        <label for="cdc">CDC (Last Done)</label>
-                        <input type="text" class="form-control" id="cdc" placeholder="Enter CDC (Last Done)">
+                        <label for="cdcLastDone">CDC (Last Done)</label>
+                        <input type="text" class="form-control" id="cdcLastDone" placeholder="Enter CDC (Last Done)">
                     </div>
                     <div class="form-group">
                         <label for="latestAction">Latest Action</label>
@@ -214,7 +197,6 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <!-- <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button> -->
                     <button type="button" class="btn btn-primary" id="saveChangesBtn" onclick="saveChanges()">Save
                         changes</button>
                 </div>
@@ -223,7 +205,36 @@
     </div>
 
 
-
+    <!-- More Details Modal -->
+    <div class="modal fade" id="moreDetailsModal" tabindex="-1" role="dialog" aria-labelledby="moreDetailsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="moreDetailsModalLabel">More Details</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="moreDetailsTableBody">
+                            <!-- More details will be dynamically added here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>

@@ -241,6 +241,9 @@ def decrypt_and_save_images(
 def update_records_api():
     if request.method == "POST":
         updated_record = request.get_json()
+        print("++++++++++++++++++++")
+        print(updated_record)
+        print("++++++++++++++++++++++++ ")
         success = db_instance.update_records(updated_record)
         if success:
             return jsonify({"message": "Record updated successfully"})
@@ -302,25 +305,37 @@ def clear_temp_folder():
 @app.route("/move-image", methods=["POST"])
 def move_image():
     try:
-        source = str(request.form.get("source"))
-        destination = str(request.form.get("destination"))
-        mill_name = str(request.form.get("mill_name"))
-        machine_name = str(request.form.get("machine_name"))
-        date = str(request.form.get("date"))
-        total_fp_count = str(request.form.get("total_fp_count"))
-        total_tp_count = str(request.form.get("total_tp_count"))
-        total_nmm_count = str(request.form.get("total_nmm_count"))
-        comment = str(request.form.get("comment"))
+        # Access image data from the request
+        # source = request.form["source"]
+        # destination = request.form["destination"]
+        # mill_name = request.form["mill_name"]
+        # machine_name = request.form["machine_name"]
+        # date = request.form["date"]
+        # comment = request.form["comment"]
 
-        # results = {
-        #     "mill_name": mill_name,
-        #     "machine_name": machine_name,
-        #     "date": date,
-        #     "total_fp_count": total_fp_count,
-        #     "total_tp_count": total_tp_count,
-        #     "total_nmm_count": total_nmm_count,
-        #     "comment": comment,
-        # }
+        data = request.json
+        source = data["source"]
+        destination = data["destination"]
+        mill_name = data["mill_name"]
+        machine_name = data["machine_name"]
+        date = data["date"]
+        count_details = data["count_details"]  # Extract count_details data
+        comment = data["comment"]  # Extract comment data
+
+        print("Source:", source)
+        print("Destination:", destination)
+        print("Mill Name:", mill_name)
+        print("Date:", date)
+        print("Count Details:", count_details)  # Print count_details
+        print("Comment:", comment)  # Print comment
+
+        # print("Comment:", comment)
+
+        # # Handle count_details separately if it's sent as a JSON string
+        # count_details_json = request.form.get("count_details")
+        # if count_details_json:
+        #     count_details = json.loads(count_details_json)
+        #     print("Count Details:", count_details)
 
         try:
             if not os.path.exists(source):
@@ -341,9 +356,7 @@ def move_image():
                     mill_name,
                     machine_name,
                     date,
-                    total_tp_count,
-                    total_fp_count,
-                    total_nmm_count,
+                    count_details,
                     comment,
                 )
                 return "Image moved successfully."
@@ -364,12 +377,7 @@ def dashboard():
         selected_date = request.form.get("date")
         db_instance.fetch_all_databases_data(selected_date)
         records = db_instance.fetch_records_by_date(selected_date)
-        # print("+++++++++++++")
-        # print("records :", records)
-        # print("+++++++++++++")
-        # formatted_records = [
-        #     (date.strftime("%Y-%m-%d"), *rest) for date, *rest in records
-        # ]
+
         modified_records = [
             (
                 (record[:7] + (record[7].strip("{}"),) + record[8:])
@@ -378,6 +386,60 @@ def dashboard():
             )
             for record in records
         ]
+
+        merged_data = []
+        for record in modified_records:
+            defect_counts_mdd = json.loads(record[8])
+            defect_counts_add = json.loads(record[9])
+
+            subtable = []
+            for defect_name in defect_counts_mdd:
+                mdd_count = defect_counts_mdd.get(defect_name, 0)
+                add_count = defect_counts_add.get(defect_name, 0)
+                subtable.append([defect_name, 0, 0, 0, mdd_count, add_count])
+
+            total_mdd_count = sum(defect_counts_mdd.values())
+            total_add_count = sum(defect_counts_add.values())
+
+            count_details = record[10]
+            count_details_dict = {}
+            if count_details:
+                count_details_dict = json.loads(count_details)
+                for detail in count_details_dict:
+                    label = detail.get("label", "")
+                    if label:
+                        tp = detail.get("tp", 0)
+                        fp = detail.get("fp", 0)
+                        nmm = detail.get("nmm", 0)
+                        mdd_count = defect_counts_mdd.get(label, 0)
+                        add_count = defect_counts_add.get(label, 0)
+                        subtable.append([label, tp, fp, nmm, mdd_count, add_count])
+
+            if subtable:
+                total_tp_count = sum(
+                    detail.get("tp", 0) for detail in count_details_dict
+                )
+                total_fp_count = sum(
+                    detail.get("fp", 0) for detail in count_details_dict
+                )
+                total_nmm_count = sum(
+                    detail.get("nmm", 0) for detail in count_details_dict
+                )
+                subtable.append(
+                    [
+                        "total",
+                        total_tp_count,
+                        total_fp_count,
+                        total_nmm_count,
+                        total_mdd_count,
+                        total_add_count,
+                    ]
+                )
+
+            merged_data.append(subtable)
+
+        for i, record in enumerate(modified_records):
+            modified_records[i] = record[:8] + (merged_data[i],) + record[11:]
 
         return jsonify(modified_records)
     else:

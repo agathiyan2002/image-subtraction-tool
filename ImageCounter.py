@@ -1,6 +1,8 @@
 import os
 import psycopg2
 from collections import defaultdict
+import json
+import json
 
 
 class ImageCounter:
@@ -96,22 +98,15 @@ class ImageCounter:
         mill_name,
         machine_name,
         date,
-        total_tp_count,
-        total_fp_count,
-        total_nmm_count,
+        count_details,
         comment,
     ):
         try:
             conn = psycopg2.connect(self.db_connection_string)
             cursor = conn.cursor()
 
-            # mill_name = result["mill_name"]
-            # machine_name = result["machine_name"]
-            # date = result["date"]
-            # tp_count = result["total_tp_count"]
-            # fp_count = result["total_fp_count"]
-            # nmm_count = result["total_nmm_count"]
-            # comment = result["comment"]
+            # Convert count_details dictionary to JSON string
+            count_details_json = json.dumps(count_details)
 
             cursor.execute(
                 "SELECT * FROM mill_details WHERE date = %s AND mill_name = %s AND machine_name=%s",
@@ -121,11 +116,9 @@ class ImageCounter:
 
             if existing_record:
                 cursor.execute(
-                    "UPDATE mill_details SET true_positive = %s, false_positive = %s, name_mismatch = %s, comments = %s WHERE date = %s AND mill_name = %s AND machine_name = %s ",
+                    "UPDATE mill_details SET count_details=%s, comments=%s WHERE date = %s AND mill_name = %s AND machine_name = %s ",
                     (
-                        total_tp_count,
-                        total_fp_count,
-                        total_nmm_count,
+                        count_details_json,  # Store count_details as JSON string
                         comment,
                         date,
                         mill_name,
@@ -134,14 +127,12 @@ class ImageCounter:
                 )
             else:
                 cursor.execute(
-                    "INSERT INTO mill_details (mill_name,machine_name, date, true_positive, false_positive, name_mismatch, comments) VALUES (%s, %s,%s, %s, %s, %s, %s)",
+                    "INSERT INTO mill_details (mill_name,machine_name, date, count_details, comments) VALUES (%s, %s,%s,%s, %s)",
                     (
                         mill_name,
                         machine_name,
                         date,
-                        total_tp_count,
-                        total_fp_count,
-                        total_nmm_count,
+                        count_details_json,  # Store count_details as JSON string
                         comment,
                     ),
                 )
