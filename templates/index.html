@@ -15,10 +15,48 @@
 </head>
 
 <body>
+
+    <header>
+        <div class="container-fluid">
+            <div class="row justify-content-between align-items-center">
+                <!-- Move the "Image subtraction tool" heading to the left -->
+                <div>
+                    <h3 class="mb-0">Image subtraction tool</h3>
+                </div>
+                <!-- Move the Date Picker to the center -->
+                <div class="col-auto">
+                    <div class="input-group">
+                        <input type="text" class="form-control datepicker" placeholder="Select date"
+                            aria-label="Select date" aria-describedby="button-addon2">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-secondary" type="button" id="button-addon2"
+                                onclick="showMillFolders()">Filter Mill Folders</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Move the "Dashboard" button to the right -->
+                <div class="col-auto">
+                    <div class="row justify-content-end pr-4">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-link text-white mr-3 dashboard-link">
+                            <!-- Change text color to white -->
+                            <i class="fas fa-user mr-1 text-white"></i> Dashboard <!-- Change icon color to white -->
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+
+
+
     <div id="qualityCheckingFrame" class="d-none">
         <div class="d-flex justify-content-between">
             <!-- Back button -->
-            <button id="backButtonQuaty" class="btn btn-outline-secondary back-button" onclick="hideQualityCheckingFrame()">
+            <button id="backButtonQuaty" class="btn btn-outline-secondary back-button"
+                onclick="hideQualityCheckingFrame()">
                 <i class="fas fa-arrow-left"></i> Back
             </button>
 
@@ -35,73 +73,51 @@
 
 
 
-    <div class="container-fluid mt-5">
-        <div class="row justify-content-end pr-4">
-            <a href="{{ url_for('dashboard') }}" class="btn btn-link text-dark mr-3 dashboard-link">
-                <i class="fas fa-user mr-1"></i> Dashboard
-            </a>
-        </div>
-
-        <div class="row justify-content-center">
-            <div class="col-auto">
-                <h1>Image subtraction tool</h1><br>
-                <p>Select the date</p>
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control datepicker" placeholder="Select date"
-                        aria-label="Select date" aria-describedby="button-addon2">
-                    <div class="input-group-append">
-                        <button class="btn btn-outline-secondary" type="button" id="button-addon2"
-                            onclick="showMillFolders()">Filter Mill Folders</button>
-                    </div>
-                    <div id="loadingSpinner" class="spinner-border text-primary ml-2" role="status"
-                        style="display: none;">
-                        <span class="sr-only">Loading...</span>
-                    </div>
 
 
+
+    <div id="loadingSpinner" class="spinner-border text-primary ml-2" role="status" style="display: none;">
+        <span class="sr-only">Loading...</span>
+    </div>
+
+    <div id="millFolders"></div>
+    <button id="backButton" class="btn btn-outline-secondary d-none" onclick="goBack()">Back</button>
+    <button id="submitBtn" class="btn btn-primary d-none" onclick="submitImages()">Submit</button>
+
+
+    <div id="imageDisplay" class="mt-6"></div>
+    <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">Image Viewer</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-            </div>
-        </div>
-
-
-
-        <div id="millFolders"></div>
-        <button id="backButton" class="btn btn-outline-secondary d-none" onclick="goBack()">Back</button>
-        <button id="submitBtn" class="btn btn-primary d-none" onclick="submitImages()">Submit</button>
-
-        <div id="imageDisplay" class="mt-6"></div>
-        <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="imageModalLabel">Image Viewer</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+                <div class="modal-body">
+                    <div class="image-info">
+                        <p id="imageLabel" class="info-item"></p>
+                        <p id="status" class="info-item"></p>
                     </div>
-                    <div class="modal-body">
-                        <div class="image-info">
-                            <p id="imageLabel" class="info-item"></p>
-                            <p id="status" class="info-item"></p>
-                        </div>
-                        <iframe id="imageFrame" frameborder="0" style="width:100%;height:700px;"></iframe>
-                        <p id="imageCount"></p>
+                    <iframe id="imageFrame" frameborder="0" style="width:100%;height:700px;"></iframe>
+                    <p id="imageCount"></p>
 
-                        <!-- <p>Shortcut Keys:</p> -->
-                        <ul class="shortcut-keys">
-                            <li>- Next Image: D</li>
-                            <li>- Previous Image: A</li>
-                            <li>- True Positive: Right Arrow</li>
-                            <li>- False Positive: Left Arrow</li>
-                            <li>- Name Mismatch: Up Arrow</li>
-                        </ul>
-                    </div>
-
+                    <!-- <p>Shortcut Keys:</p> -->
+                    <ul class="shortcut-keys">
+                        <li>- Next Image: D</li>
+                        <li>- Previous Image: A</li>
+                        <li>- True Positive: Right Arrow</li>
+                        <li>- False Positive: Left Arrow</li>
+                        <li>- Name Mismatch: Up Arrow</li>
+                    </ul>
                 </div>
 
             </div>
+
         </div>
+    </div>
     </div>
 
 

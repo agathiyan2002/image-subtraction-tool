@@ -1,3 +1,21 @@
+header {
+    background-color: #337ab7;
+    color: white;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-bottom: 3px solid black;
+}
+
+header h3 {
+    margin-bottom: 0;
+}
+
+#button-addon2 {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
 .datepicker {
     max-width: 150px;
     margin: auto;
@@ -114,4 +132,26 @@
 #imageFrame {
     width: fit-content;
     height: fit-content;
+}
+
+#loadingSpinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    color: green;
+    font-size: 3rem;
+}
+
+
+#backButton,
+#submitBtn {
+    padding: 10px 20px;
+    width: 150px;
+    margin: 10px;
+}
+
+#submitBtn {
+    background-color: green;
+    border-color: green;
+    color: white;
 }
