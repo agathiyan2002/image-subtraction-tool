@@ -61,6 +61,7 @@ def fetch_roll_details(selected_date):
             port="5432",
             database="postgres",
         )
+
         cursor = connection.cursor()
         cursor.execute(
             "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner');"
@@ -88,8 +89,8 @@ def fetch_roll_details(selected_date):
                 roll_details = db_cursor.fetchall()
 
                 sql_query = """
-                    SELECT filename 
-                    FROM defect_details 
+                    SELECT filename, coordinate
+                    FROM defect_details
                     WHERE DATE(timestamp) = %s 
                         AND add_imagepath IS NOT NULL 
                         AND roll_id = %s
@@ -97,11 +98,14 @@ def fetch_roll_details(selected_date):
                 if roll_details:
                     for roll_number, date, roll_id in roll_details:
                         db_cursor.execute(sql_query, (selected_date, roll_id))
-                        file_names = db_cursor.fetchall()
+                        rows = db_cursor.fetchall()
+                        file_names = [row[0] for row in rows]
+                        coordinates = [row[1] for row in rows]
                         formatted_roll_details = {
                             "roll_number": roll_number,
                             "date": date.strftime("%Y-%m-%d"),
-                            "file_names": [file_name[0] for file_name in file_names],
+                            "file_names": file_names,
+                            "coordinates": coordinates,
                         }
                         if db_name not in all_roll_details:
                             all_roll_details[db_name] = []
@@ -114,7 +118,7 @@ def fetch_roll_details(selected_date):
                     f"Error fetching roll details from database {db_name}: {db_error}"
                 )
                 error_databases.append(db_name)
-
+        # print(all_roll_details)
         return all_roll_details, error_databases
     except psycopg2.Error as global_error:
         print("Global error fetching roll details:", global_error)
@@ -125,18 +129,13 @@ def fetch_roll_details(selected_date):
             connection.close()
 
 
-def filter_images(images, file_names):
-    # print("image", images)
-    # print("filenaem", file_names)
+def filter_images(images, file_names, coordinates):
     filtered_images = []
     for image in images:
-        # Extracting filename from the image_path
         image_filename = image["image_path"].split("/")[-1]
-
         if image_filename in file_names:
-            # print("+++++++++++++++")
-            # print(image)
-            # print("+++++++++++++++++")
+            # Add coordinates to the image data structure
+            image["coordinates"] = coordinates[file_names.index(image_filename)]
             filtered_images.append(image)
     return filtered_images
 
@@ -158,6 +157,13 @@ def check_roll_details_exist(formatted_roll_details, base_folder):
             roll_number = roll_detail["roll_number"]
             date = roll_detail["date"]
             file_names = roll_detail["file_names"]
+            coordinate = roll_detail["coordinates"]
+            # print("++++++++++++++++++")
+            # print("_db name", database_name)
+            # print("roll naumber", roll_number)
+            # print("file_names", file_names)
+            # print("coordinate", coordinate)
+            # print("++++++++++++++++++")
 
             if (
                 base_folder is not None
@@ -180,8 +186,9 @@ def check_roll_details_exist(formatted_roll_details, base_folder):
                     roll_number,
                     date,
                 )
-                # print("iamges",images)
-                filtered_images = filter_images(images, file_names)
+
+                # print("iamges", images)
+                filtered_images = filter_images(images, file_names, coordinate)
                 # print("Filtered Images:", filtered_images)
                 if filtered_images:
                     if database_name not in database_images:
@@ -227,10 +234,13 @@ def decrypt_and_save_images(
                     if not os.path.exists(image_path):
                         with open(image_path, "wb") as img_file:
                             img_file.write(image_data)
+                        # Extract coordinates
+                        coordinates = json_data.get("coordinates", [])
                         images.append(
                             {
                                 "label": json_data["shapes"][0]["label"],
                                 "image_path": image_path,
+                                "coordinates": coordinates,
                             }
                         )
                         stored_images.add(image_path)
@@ -262,10 +272,23 @@ def index():
         clear_temp_folder()
         selected_date = request.form["date"]
         roll_details, error_databases = fetch_roll_details(selected_date)
-        print("++++++++++++++")
-        print("roll_details", roll_details)
-        print("++++++++++++++")
-        print("eror db file", error_databases)
+        validated_folder = (
+            {
+                mill_name: folder_validated
+                for mill_name, folder_validated in db_instance.validate_folder(
+                    selected_date
+                )
+            }
+            if db_instance.validate_folder(selected_date) is not None
+            else {}
+        )
+        print("validate", validation_folder)
+
+        # call validate_folder fuinc store the variavel return value
+        # print("++++++++++++++")
+        # print("roll_details", roll_details)
+        # print("++++++++++++++")
+        # print("eror db file", error_databases)
         if roll_details == {}:
 
             alert_message = "false"
@@ -278,9 +301,9 @@ def index():
             all_mill_images, missing_date_folders = check_roll_details_exist(
                 roll_details, base_folder
             )
-            print("************************")
-            print(all_mill_images)
-            print("************************")
+            # print("************************")
+            # print(all_mill_images)
+            # print("************************")
 
             return jsonify(
                 {
@@ -289,6 +312,7 @@ def index():
                     "validation_folder": validation_folder,
                     "alert_message": alert_message,
                     "error_databases": error_databases,
+                    "validated_folder": validated_folder,
                 }
             )
 
@@ -305,13 +329,6 @@ def clear_temp_folder():
 @app.route("/move-image", methods=["POST"])
 def move_image():
     try:
-        # Access image data from the request
-        # source = request.form["source"]
-        # destination = request.form["destination"]
-        # mill_name = request.form["mill_name"]
-        # machine_name = request.form["machine_name"]
-        # date = request.form["date"]
-        # comment = request.form["comment"]
 
         data = request.json
         source = data["source"]
@@ -321,13 +338,15 @@ def move_image():
         date = data["date"]
         count_details = data["count_details"]  # Extract count_details data
         comment = data["comment"]  # Extract comment data
+        validated = data["validated"]
 
         print("Source:", source)
         print("Destination:", destination)
-        print("Mill Name:", mill_name)
-        print("Date:", date)
-        print("Count Details:", count_details)  # Print count_details
-        print("Comment:", comment)  # Print comment
+        # print("Mill Name:", mill_name)
+        # print("Date:", date)
+        # print("Count Details:", count_details)  # Print count_details
+        # print("Comment:", comment)  # Print comment
+        # print("validated",validated)
 
         # print("Comment:", comment)
 
@@ -353,11 +372,7 @@ def move_image():
                 )
                 image_counter = ImageCounter(validation_folder, db_connection_string)
                 image_counter.insert_into_db(
-                    mill_name,
-                    machine_name,
-                    date,
-                    count_details,
-                    comment,
+                    mill_name, machine_name, date, count_details, comment, validated
                 )
                 return "Image moved successfully."
             else:

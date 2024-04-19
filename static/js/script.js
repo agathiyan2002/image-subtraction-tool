@@ -4,9 +4,12 @@ var alert_message = "";
 var currentImageIndex = 0;
 var currentImages = [];
 var error_databases = [];
+var validated_folder = [];
 var imageStates = {};
 var dateSent = false;
-
+var currentImageUrl = "";
+var currentImageCoordinates = [];
+console.log("out coordinate", currentImageCoordinates);
 $(document).ready(function () {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
@@ -16,22 +19,29 @@ $(document).ready(function () {
 
     $(document).keydown(function (e) {
         if ($('#imageModal').is(':visible')) {
+            // console.log("Key pressed:", e.key); // Check if the correct key is being detected
             if (e.key === 'a') {
-                showPreviousImage();
+                // console.log("Previous image key pressed");
+                showPreviousImage(); // Check if the function is being called
             } else if (e.key === 'd') {
-                showNextImage();
+                // console.log("Next image key pressed");
+                showNextImage(); // Check if the function is being called
             } else if (e.key === 'ArrowLeft') {
+                // console.log("Arrow Left key pressed");
                 setImageState('fp');
                 setTimeout(showNextImage, 1000);
             } else if (e.key === 'ArrowRight') {
+                // console.log("Arrow Right key pressed");
                 setImageState('tp');
                 setTimeout(showNextImage, 1000);
             } else if (e.key === 'ArrowUp') {
+                // console.log("Arrow Up key pressed");
                 setImageState('nmm');
                 setTimeout(showNextImage, 1000);
             }
         }
     });
+
 });
 
 function showMillFolders() {
@@ -53,6 +63,9 @@ function showMillFolders() {
             validation_folder = response["validation_folder"];
             alert_message = response["alert_message"];
             error_databases = response["error_databases"];
+            validated_folder = response["validated_folder"];
+            // console.log("validation_folder", validation_folder);
+            // console.log("millFoldersWithRollIDs", millFoldersWithRollIDs);
             if (alert_message == "false") {
                 showErrorDialog("No records found for the selected date.");
                 return;
@@ -85,12 +98,14 @@ function showErrorDialog(message) {
 }
 
 function updateFolderList(millFoldersWithRollIDs) {
-    var folderList = "<ul>";
+    var folderList = "<ul style='padding: 20px;'>";
     millFoldersWithRollIDs.forEach(function (millData) {
         for (var millName in millData) {
+            var validated = validated_folder[millName];
+            var validateIcon = (validated === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
             folderList += "<li><img src='static/assets/icons8-folder-48.png' class='folder-icon' />" +
                 "<button class='btn btn-link folder-btn' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData[millName]) + ")'>" +
-                millName + "</button></li>";
+                millName + "</button>" + validateIcon + "</li>";
         }
     });
     folderList += "</ul>";
@@ -124,7 +139,12 @@ function showImages(millFolder, imageData) {
             var imagesCount = imageData[rollNumber][date].length;
 
             imageData[rollNumber][date].forEach(function (imageDataItem) {
-                imageList += "<img src='" + imageDataItem.image_path.replace(/\\/g, "/") + "' alt='Image' onclick='openImageDialog(\"" + imageDataItem.image_path.replace(/\\/g, "/") + "\")'>";
+                // console.log("imageDataItem", imageDataItem);
+                var imageSrc = imageDataItem.image_path.replace(/\\/g, "/");
+                var coordinates = JSON.parse(imageDataItem.coordinates);
+                // console.log("sho image coordinage", coordinates);
+                currentImageCoordinates.push(coordinates);
+                imageList += "<img src='" + imageSrc + "' alt='Image' onclick='openImageDialog(\"" + imageSrc + "\", " + JSON.stringify(coordinates) + ")'>";
             });
         }
     }
@@ -137,8 +157,8 @@ function showImages(millFolder, imageData) {
     $('#millFolders').hide();
     $('#backButton').removeClass('d-none');
     $('#submitBtn').removeClass('d-none');
-
 }
+
 
 function goBack() {
     $('#millFolders').show();
@@ -181,13 +201,26 @@ function submitImages() {
         },
         callback: function (result) {
             if (result) {
-                showSecondaryDialog();
+                // Set the confirmationReceived flag to true
+                confirmationReceived = true;
+
+                // Show both the edit button and edit options
+                $('#editButton').show();
+                $('#editOptions').show();
+
+                // You may want to trigger the 'click' event of the first image here
+                var firstImageUrl = currentImages[0];
+                openImageDialog(firstImageUrl);
             } else {
-                bootbox.hideAll();
+                showSecondaryDialog();
             }
         }
+
     });
 }
+
+
+
 
 function showQualityCheckingFrame() {
     $('#qualityCheckingFrame').removeClass('d-none');
@@ -235,6 +268,7 @@ function proceedWithSubmission() {
     var totalFPCount = 0;
     var totalNMMCount = 0;
     var comment = $('#comment').val();
+    var validated = "validated"; // Add the validated variable and assign the value "validated"
 
     // Initialize count details object
     var countDetails = {};
@@ -257,7 +291,8 @@ function proceedWithSubmission() {
                 machine_name: machineName,
                 date: date,
                 count_details: [], // Initialize count details array
-                comment: comment
+                comment: comment,
+                validated: validated // Assign the validated variable to each imageData object
             };
 
             // Update count details
@@ -311,11 +346,12 @@ function proceedWithSubmission() {
                 console.error(xhr.responseText);
             }
         });
-        
+
     });
 
     gosubmitBack();
 }
+
 
 function getLabelFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
@@ -343,18 +379,16 @@ function showSeparateTpFpNmmImages() {
         }
     });
 
-    if (tpImages.length > 0) {
-        showImagesSeparately('True Positive', tpImages);
-    }
+    var result = {
+        tpImages: tpImages,
+        fpImages: fpImages,
+        nmmImages: nmmImages
+    };
+    // console.log(result);
 
-    if (fpImages.length > 0) {
-        showImagesSeparately('False Positive', fpImages);
-    }
-
-    if (nmmImages.length > 0) {
-        showImagesSeparately('Name Mismatch', nmmImages);
-    }
+    return result;
 }
+
 
 function showImagesSeparately(category, images) {
     var imageList = "<div class='image-container' style='display: flex; flex-wrap: wrap; justify-content: start;'>";
@@ -393,53 +427,99 @@ function getImageLabelFromUrl(imageUrl) {
     return null;
 }
 
-function openImageDialog(imageUrl) {
+function openImageDialog(imageUrl, coordinates) {
+    console.log("openimaegdialog coordiante", coordinates);
     var parts = imageUrl.split('/');
     var label = parts[parts.length - 2];
+    var editOptionValue = $('#editOptions').val();
 
     $('#imageLabel').text("Label: " + label);
-
+    drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the selected image
     $('#imageFrame').attr('src', imageUrl);
     $('#imageModal').modal('show');
 
-    currentImages = $('#imageDisplay').find('img').map(function () {
-        return $(this).attr('src');
-    }).get();
+    // Update current image URL and coordinates based on the selected image
+    currentImageUrl = imageUrl;
+    // currentImageCoordinates.push(coordinates);    // Call showSeparateTpFpNmmImages function to get the images
+    var images = showSeparateTpFpNmmImages();
+    var tpImages = images.tpImages; // Access tpImages property
+    var fpImages = images.fpImages; // Access fpImages property
+    var nmmImages = images.nmmImages; // Access nmmImages property
 
+    // Check the selected edit option and display images accordingly
+    if (editOptionValue === 'all_images') {
+        currentImages = $('#imageDisplay').find('img').map(function () {
+            return $(this).attr('src');
+        }).get();
+        // currentImageUrl.push(currentImageUrl);
+        // console.log("all", currentImages);
+        // Use the edit option value as needed
+        // console.log("Selected edit option:", editOptionValue);
+    } else if (editOptionValue === 'false_positive') {
+        currentImages = fpImages;
+        // console.log("fp", currentImages);
+        // // Use the edit option value as needed
+        // console.log("Selected edit option:", editOptionValue);
+    } else if (editOptionValue === 'true_positive') {
+        currentImages = tpImages;
+        // console.log("tp", currentImages);
+        // // Use the edit option value as needed
+        // console.log("Selected edit option:", editOptionValue);
+    } else if (editOptionValue === 'name_mismatch') {
+        currentImages = nmmImages;
+        // console.log("nmm", currentImages);
+        // // Use the edit option value as needed
+        // console.log("Selected edit option:", editOptionValue);
+    }
+
+    // Update current image index and display the selected image
     currentImageIndex = currentImages.indexOf(imageUrl);
-
     updateStatus(imageStates[imageUrl]);
     updateImageBorder(imageUrl);
-
     $('#imageCount').text((currentImageIndex + 1) + "/" + currentImages.length);
-
     updateSelectedImageBorder();
+
+
 }
+
+
 
 function updateSelectedImageBorder() {
     var currentImageUrl = currentImages[currentImageIndex];
     updateImageBorder(currentImageUrl, imageStates[currentImageUrl]);
 }
 
-function showPreviousImage() {
-    if (currentImageIndex > 0) {
-        currentImageIndex--;
-        var imageUrl = currentImages[currentImageIndex];
-        $('#imageFrame').attr('src', imageUrl);
-        openImageDialog(imageUrl);
-        updateSelectedImageBorder();
-    }
-}
-
 function showNextImage() {
     if (currentImageIndex < currentImages.length - 1) {
         currentImageIndex++;
         var imageUrl = currentImages[currentImageIndex];
-        $('#imageFrame').attr('src', imageUrl);
-        openImageDialog(imageUrl);
+        var coordinates = currentImageCoordinates[currentImageIndex]; // Get coordinates for the next image
+
+        if (coordinates !== undefined) {
+            openImageDialog(imageUrl, coordinates);
+            drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the new image
+            updateSelectedImageBorder();
+        } else {
+            console.error("Coordinates for the next image are undefined.");
+        }
+    }
+}
+
+
+function showPreviousImage() {
+    if (currentImageIndex > 0) {
+        currentImageIndex--;
+        var imageUrl = currentImages[currentImageIndex];
+        var coordinates = currentImageCoordinates[currentImageIndex]; // Get coordinates for the previous image
+
+        openImageDialog(imageUrl, coordinates);
+        drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the new image
         updateSelectedImageBorder();
     }
 }
+
+
+
 
 function setImageState(state) {
     var currentImageUrl = currentImages[currentImageIndex];
@@ -570,3 +650,50 @@ function hideQualityCheckingFrame() {
         updateImageBorder(imageUrl, imageStates[imageUrl]);
     });
 }
+
+function drawRectanglePlot(imageUrl, coordinates) {
+    console.log("draw ", coordinates);
+    // Create a new image element
+    var img = new Image();
+
+    // Set the image source to the provided URL
+    img.src = imageUrl;
+
+    // Wait for the image to load
+    img.onload = function () {
+        // Get the existing canvas element
+        var canvas = document.getElementById('imageCanvas');
+        var ctx = canvas.getContext('2d');
+
+        // Set canvas dimensions to match image dimensions
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Draw the image on the canvas
+        ctx.drawImage(img, 0, 0);
+
+        // Parse coordinates
+        var parsedCoordinates = coordinates.map(parseFloat);
+
+        // Calculate rectangle dimensions
+        var x1 = parsedCoordinates[0];
+        var y1 = parsedCoordinates[1];
+        var x2 = parsedCoordinates[2];
+        var y2 = parsedCoordinates[3];
+        var width = x2 - x1;
+        var height = y2 - y1;
+
+        // Draw rectangle on the canvas
+        ctx.beginPath();
+        ctx.rect(x1, y1, width, height);
+
+        // Set border color to white
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'white';
+        ctx.stroke();
+        ctx.closePath();
+    };
+}
+
+
+

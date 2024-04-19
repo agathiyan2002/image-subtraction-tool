@@ -49,9 +49,6 @@
     </header>
 
 
-
-
-
     <div id="qualityCheckingFrame" class="d-none">
         <div class="d-flex justify-content-between">
             <!-- Back button -->
@@ -86,6 +83,7 @@
 
 
     <div id="imageDisplay" class="mt-6"></div>
+
     <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
@@ -100,8 +98,34 @@
                     <div class="image-info">
                         <p id="imageLabel" class="info-item"></p>
                         <p id="status" class="info-item"></p>
+                        <div class="image-info">
+                            <p id="imageLabel" class="info-item"></p>
+                            <p id="status" class="info-item"></p>
+                            <button id="editButton" class="btn btn-primary" style="display: none;"
+                                onclick="showEditOptions()">Edit</button>
+                            <!-- Dropdown select menu -->
+                            <select id="editOptions" class="form-control mt-3" style="display: none;">
+                                <option value="all_images">All</option>
+                                <option value="false_positive">False Positive</option>
+                                <option value="true_positive">True Positive</option>
+                                <option value="name_mismatch">Name Mismatch</option>
+                            </select>
+
+
+                        </div>
+
+                        <!-- 
+                                add edit button and drop down select
+                                the drop down selcted itme is false passitve,true passtive,name mismatch
+                                and one condition
+                                this tow open when is hwo 
+                                uer when clikc yest button
+                                the show the this tow optn 
+                            -->
                     </div>
-                    <iframe id="imageFrame" frameborder="0" style="width:100%;height:700px;"></iframe>
+                    <!-- <iframe id="imageFrame" frameborder="0" style="width:100%;height:700px;"></iframe> -->
+                    <canvas id="imageCanvas"></canvas>
+
                     <p id="imageCount"></p>
 
                     <!-- <p>Shortcut Keys:</p> -->

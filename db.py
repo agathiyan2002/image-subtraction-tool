@@ -388,3 +388,21 @@ class Database:
             if destination_connection:
                 destination_cursor.close()
                 destination_connection.close()
+
+    def validate_folder(self, selected_date):
+        try:
+            destination_connection = psycopg2.connect(**self.destination_db_config)
+            destination_cursor = destination_connection.cursor()
+            destination_cursor.execute(
+                "SELECT mill_name, folder_validated FROM mill_details WHERE date = %s",
+                (selected_date,),
+            )
+            folder_data = destination_cursor.fetchall()
+            return folder_data
+        except psycopg2.Error as e:
+            print("Error fetching folder validation data:", e)
+            return None
+        finally:
+            if destination_connection:
+                destination_cursor.close()
+                destination_connection.close()

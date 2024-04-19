@@ -94,12 +94,7 @@ class ImageCounter:
         return final_results
 
     def insert_into_db(
-        self,
-        mill_name,
-        machine_name,
-        date,
-        count_details,
-        comment,
+        self, mill_name, machine_name, date, count_details, comment, validated
     ):
         try:
             conn = psycopg2.connect(self.db_connection_string)
@@ -116,10 +111,11 @@ class ImageCounter:
 
             if existing_record:
                 cursor.execute(
-                    "UPDATE mill_details SET count_details=%s, comments=%s WHERE date = %s AND mill_name = %s AND machine_name = %s ",
+                    "UPDATE mill_details SET count_details=%s, comments=%s,folder_validated=%s WHERE date = %s AND mill_name = %s AND machine_name = %s ",
                     (
                         count_details_json,  # Store count_details as JSON string
                         comment,
+                        validated,
                         date,
                         mill_name,
                         machine_name,
@@ -127,13 +123,14 @@ class ImageCounter:
                 )
             else:
                 cursor.execute(
-                    "INSERT INTO mill_details (mill_name,machine_name, date, count_details, comments) VALUES (%s, %s,%s,%s, %s)",
+                    "INSERT INTO mill_details (mill_name,machine_name, date, count_details, comments,folder_validated) VALUES (%s, %s,%s,%s, %s)",
                     (
                         mill_name,
                         machine_name,
                         date,
                         count_details_json,  # Store count_details as JSON string
                         comment,
+                        validated,
                     ),
                 )
 
