@@ -319,6 +319,46 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/filter_option", methods=["POST"])
+def filter_option():
+    data = request.json
+    # Save the data to a JSON file
+    with open("filtered_images.json", "w") as f:
+        json.dump(data, f)
+    return jsonify({"message": "Data received and saved successfully!"})
+
+
+def get_image_for_option(option):
+    with open("filtered_images.json") as f:
+        data = json.load(f)
+        return data.get(option, "Option not found")
+
+
+@app.route("/return_option_value", methods=["POST"])
+def return_option_value():
+    try:
+        data = request.get_json()
+        option_value = data["option"]
+        print(option_value)
+
+        if option_value == "false_positive":
+            image = get_image_for_option("fpImages")
+            return jsonify({"false_positive_image": image}), 200
+        elif option_value == "true_positive":
+            image = get_image_for_option("tpImages")
+            return jsonify({"true_positive_image": image}), 200
+        elif option_value == "name_mismatch":
+            image = get_image_for_option("nmmImages")
+            return jsonify({"name_mismatch_image": image}), 200
+        elif option_value == "all_images":
+            image = get_image_for_option("allImages")
+            return jsonify({"all_images": image}), 200
+        else:
+            return jsonify({"error": "Invalid option"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 def clear_temp_folder():
     temp_folder = os.path.join("static", "temp")
     if os.path.exists(temp_folder):
@@ -487,4 +527,4 @@ if __name__ == "__main__":
     # # restore_databases_daily()
     # scheduler_thread = threading.Thread(target=run_scheduler)
     # scheduler_thread.start()
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)

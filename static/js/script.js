@@ -9,7 +9,12 @@ var imageStates = {};
 var dateSent = false;
 var currentImageUrl = "";
 var currentImageCoordinates = [];
-console.log("out coordinate", currentImageCoordinates);
+var editOptionValue = 'all_images';
+var tpImages = [];
+var fpImages = [];
+var nmmImages = [];
+var confirmationReceived = false;
+// console.log("out coordinate", currentImageCoordinates);
 $(document).ready(function () {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
@@ -44,7 +49,14 @@ $(document).ready(function () {
 
 });
 
+$(document).ready(function () {
+    // Event listener for when the user changes the selection
+    $('#editOptions').on('change', function () {
+        editOptionValue = $(this).val();
+    });
+});
 function showMillFolders() {
+    $('#folderNotFound').hide();
     gosubmitBack();
     $('#millFolders').html('');
     $('#folderTitle').html('');
@@ -59,6 +71,7 @@ function showMillFolders() {
         data: { date: formattedDate },
         success: function (response) {
             millFoldersWithRollIDs = response["all_mill_images"];
+            console.log("millFoldersWithRollIDs", millFoldersWithRollIDs);
             missing_date_folders = response["missing_date_folders"];
             validation_folder = response["validation_folder"];
             alert_message = response["alert_message"];
@@ -88,6 +101,7 @@ function showMillFolders() {
     dateSent = true;
 }
 
+
 function showErrorDialog(message) {
     bootbox.alert({
         title: "Error",
@@ -98,22 +112,50 @@ function showErrorDialog(message) {
 }
 
 function updateFolderList(millFoldersWithRollIDs) {
-    var folderList = "<ul style='padding: 20px;'>";
+    var folderList = "<div class='folder-grid'>"; // Container for the folder grid
+    var allEmpty = true; // Flag to track if all objects are empty
+
+    millFoldersWithRollIDs.forEach(function (millData) {
+        for (var millName in millData) {
+            if (millData[millName] !== null && millData[millName] !== undefined) {
+                allEmpty = false;
+                break; // Exit the loop if non-empty data is found
+            }
+        }
+    });
+
+    if (allEmpty) {
+        $('#folderNotFound').show(); // Show the message if all objects are empty
+        $('#millFolders').html(''); // Clear any existing folder grid
+        $('#imageDisplay').html('');
+        $('#folderTitle').html('');
+        return; // Exit the function
+    }
+
+    // Generate the folder grid if data is found
     millFoldersWithRollIDs.forEach(function (millData) {
         for (var millName in millData) {
             var validated = validated_folder[millName];
             var validateIcon = (validated === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
-            folderList += "<li><img src='static/assets/icons8-folder-48.png' class='folder-icon' />" +
-                "<button class='btn btn-link folder-btn' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData[millName]) + ")'>" +
-                millName + "</button>" + validateIcon + "</li>";
+
+            // Add folder item to the grid
+            folderList += "<div class='folder-item' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData[millName]) + ")'>" +
+                "<i class='fas fa-folder folder-icon fa-5x'></i>" + // Font Awesome folder icon with increased size (fa-3x)
+                "<div class='folder-details'>" +
+                "<button class='btn btn-link folder-btn'>" + millName + "</button>" + // Folder name button
+                validateIcon + // Validation icon
+                "</div></div>"; // End of folder item
         }
     });
-    folderList += "</ul>";
+
+    folderList += "</div>"; // End of folder grid container
 
     $('#millFolders').html(folderList);
+    $('#folderNotFound').hide(); // Hide the message if data is found
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
 }
+
 
 function showMissingDateFoldersDialog(missing_date_folders) {
     var dialogContent = "<div style='height: 300px; overflow-y: auto;'>";
@@ -132,6 +174,8 @@ function showMissingDateFoldersDialog(missing_date_folders) {
 }
 
 function showImages(millFolder, imageData) {
+
+
     var imageList = "<div class='image-container'>";
 
     for (var rollNumber in imageData) {
@@ -144,6 +188,7 @@ function showImages(millFolder, imageData) {
                 var coordinates = JSON.parse(imageDataItem.coordinates);
                 // console.log("sho image coordinage", coordinates);
                 currentImageCoordinates.push(coordinates);
+
                 imageList += "<img src='" + imageSrc + "' alt='Image' onclick='openImageDialog(\"" + imageSrc + "\", " + JSON.stringify(coordinates) + ")'>";
             });
         }
@@ -151,12 +196,16 @@ function showImages(millFolder, imageData) {
 
     imageList += "</div>";
 
+    $('#editOptions, #editButton, #saveButton').hide();
+    confirmationReceived = false;
+
     $('#imageDisplay').html(imageList);
     $('#folderTitle').html('All Images in ' + millFolder);
 
     $('#millFolders').hide();
     $('#backButton').removeClass('d-none');
     $('#submitBtn').removeClass('d-none');
+    $('#startSubtractionBtn').removeClass('d-none');
 }
 
 
@@ -167,7 +216,6 @@ function goBack() {
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
 }
-
 function submitImages() {
     var anyImageSelected = Object.values(imageStates).some(function (state) {
         return state !== undefined;
@@ -201,25 +249,25 @@ function submitImages() {
         },
         callback: function (result) {
             if (result) {
+                // Show the edit options, edit button, and save button
+                $('#editOptions, #editButton, #saveButton').show();
+
                 // Set the confirmationReceived flag to true
                 confirmationReceived = true;
 
-                // Show both the edit button and edit options
-                $('#editButton').show();
-                $('#editOptions').show();
-
                 // You may want to trigger the 'click' event of the first image here
                 var firstImageUrl = currentImages[0];
-                openImageDialog(firstImageUrl);
+                var coordinates = currentImageCoordinates[0];
+                showSeparateTpFpNmmImages();
+                openImageDialog(firstImageUrl, coordinates);
             } else {
+                // Hide the edit options, edit button, and save button if "No" is clicked
+                $('#editOptions, #editButton, #saveButton').hide();
                 showSecondaryDialog();
             }
         }
-
     });
 }
-
-
 
 
 function showQualityCheckingFrame() {
@@ -256,11 +304,13 @@ function showSecondaryDialog() {
                 callback: function () {
                     var comment = $('#comment').val();
                     proceedWithSubmission();
+                    $('#imageModal').modal('hide'); // Close the image viewer dialog
                 }
             }
         }
     });
 }
+
 
 function proceedWithSubmission() {
     var submissionData = [];
@@ -362,46 +412,6 @@ function getLabelFromUrl(imageUrl) {
 }
 
 
-function showSeparateTpFpNmmImages() {
-    var tpImages = [];
-    var fpImages = [];
-    var nmmImages = [];
-
-    currentImages.forEach(function (imageUrl) {
-        var state = imageStates[imageUrl];
-
-        if (state === 'tp') {
-            tpImages.push(imageUrl);
-        } else if (state === 'fp') {
-            fpImages.push(imageUrl);
-        } else if (state === 'nmm') {
-            nmmImages.push(imageUrl);
-        }
-    });
-
-    var result = {
-        tpImages: tpImages,
-        fpImages: fpImages,
-        nmmImages: nmmImages
-    };
-    // console.log(result);
-
-    return result;
-}
-
-
-function showImagesSeparately(category, images) {
-    var imageList = "<div class='image-container' style='display: flex; flex-wrap: wrap; justify-content: start;'>";
-
-    images.forEach(function (imageUrl) {
-        imageList += "<img src='" + imageUrl + "' alt='Image' style='width: 200px; height: auto; margin: 10px;'>";
-    });
-    imageList += "</div>";
-
-    $('#qualityCheckingFrame').append("<h3 style='text-align: left;'>" + category + "</h3>");
-    $('#qualityCheckingFrame').append(imageList);
-
-}
 
 function getMillNameFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
@@ -427,63 +437,6 @@ function getImageLabelFromUrl(imageUrl) {
     return null;
 }
 
-function openImageDialog(imageUrl, coordinates) {
-    console.log("openimaegdialog coordiante", coordinates);
-    var parts = imageUrl.split('/');
-    var label = parts[parts.length - 2];
-    var editOptionValue = $('#editOptions').val();
-
-    $('#imageLabel').text("Label: " + label);
-    drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the selected image
-    $('#imageFrame').attr('src', imageUrl);
-    $('#imageModal').modal('show');
-
-    // Update current image URL and coordinates based on the selected image
-    currentImageUrl = imageUrl;
-    // currentImageCoordinates.push(coordinates);    // Call showSeparateTpFpNmmImages function to get the images
-    var images = showSeparateTpFpNmmImages();
-    var tpImages = images.tpImages; // Access tpImages property
-    var fpImages = images.fpImages; // Access fpImages property
-    var nmmImages = images.nmmImages; // Access nmmImages property
-
-    // Check the selected edit option and display images accordingly
-    if (editOptionValue === 'all_images') {
-        currentImages = $('#imageDisplay').find('img').map(function () {
-            return $(this).attr('src');
-        }).get();
-        // currentImageUrl.push(currentImageUrl);
-        // console.log("all", currentImages);
-        // Use the edit option value as needed
-        // console.log("Selected edit option:", editOptionValue);
-    } else if (editOptionValue === 'false_positive') {
-        currentImages = fpImages;
-        // console.log("fp", currentImages);
-        // // Use the edit option value as needed
-        // console.log("Selected edit option:", editOptionValue);
-    } else if (editOptionValue === 'true_positive') {
-        currentImages = tpImages;
-        // console.log("tp", currentImages);
-        // // Use the edit option value as needed
-        // console.log("Selected edit option:", editOptionValue);
-    } else if (editOptionValue === 'name_mismatch') {
-        currentImages = nmmImages;
-        // console.log("nmm", currentImages);
-        // // Use the edit option value as needed
-        // console.log("Selected edit option:", editOptionValue);
-    }
-
-    // Update current image index and display the selected image
-    currentImageIndex = currentImages.indexOf(imageUrl);
-    updateStatus(imageStates[imageUrl]);
-    updateImageBorder(imageUrl);
-    $('#imageCount').text((currentImageIndex + 1) + "/" + currentImages.length);
-    updateSelectedImageBorder();
-
-
-}
-
-
-
 function updateSelectedImageBorder() {
     var currentImageUrl = currentImages[currentImageIndex];
     updateImageBorder(currentImageUrl, imageStates[currentImageUrl]);
@@ -505,7 +458,6 @@ function showNextImage() {
     }
 }
 
-
 function showPreviousImage() {
     if (currentImageIndex > 0) {
         currentImageIndex--;
@@ -517,9 +469,6 @@ function showPreviousImage() {
         updateSelectedImageBorder();
     }
 }
-
-
-
 
 function setImageState(state) {
     var currentImageUrl = currentImages[currentImageIndex];
@@ -606,6 +555,8 @@ function goBack() {
                 $('#folderTitle').html('');
                 $('#submitBtn').addClass('d-none');
 
+                $('#startSubtractionBtn').addClass('d-none');
+
                 currentImages = [];
                 imageStates = {};
             }
@@ -619,6 +570,7 @@ function gosubmitBack() {
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
     $('#submitBtn').addClass('d-none');
+    $('#startSubtractionBtn').addClass('d-none');
 
     currentImages = [];
     imageStates = {};
@@ -652,7 +604,7 @@ function hideQualityCheckingFrame() {
 }
 
 function drawRectanglePlot(imageUrl, coordinates) {
-    console.log("draw ", coordinates);
+    // console.log("draw ", coordinates);
     // Create a new image element
     var img = new Image();
 
@@ -695,5 +647,138 @@ function drawRectanglePlot(imageUrl, coordinates) {
     };
 }
 
+function startSubtraction() {
+    // Check if there are images available
+    if (currentImageCoordinates.length > 0) {
+        confirmationReceived = false;
+        $('#editOptions, #editButton, #saveButton').hide();
+
+        // Retrieve the URL and coordinates of the first image
+        var firstImageUrl = $('#imageDisplay img:first').attr('src');
+        var firstImageCoordinates = currentImageCoordinates[0];
+
+        // Call the openImageDialog function with the URL and coordinates of the first image
+        openImageDialog(firstImageUrl, firstImageCoordinates);
+    } else {
+        // Handle case where there are no images available
+        console.error("No images available for subtraction.");
+        // You can display an error message or take appropriate action here
+    }
+}
+
+// =========================================
+
+function showSeparateTpFpNmmImages() {
+    var tpImages = [];
+    var fpImages = [];
+    var nmmImages = [];
+
+    currentImages.forEach(function (imageUrl) {
+        var state = imageStates[imageUrl];
+
+        if (state === 'tp') {
+            tpImages.push(imageUrl);
+        } else if (state === 'fp') {
+            fpImages.push(imageUrl);
+        } else if (state === 'nmm') {
+            nmmImages.push(imageUrl);
+        }
+    });
+
+    var result = {
+        tpImages: tpImages,
+        fpImages: fpImages,
+        nmmImages: nmmImages,
+        allImages: currentImages // Include all images
+    };
+
+    // Send the result to the Flask server
+    $.ajax({
+        type: "POST",
+        url: "/filter_option",
+        contentType: "application/json",
+        data: JSON.stringify(result),
+        success: function (response) {
+            console.log("Data sent successfully!");
+        },
+        error: function (xhr, status, error) {
+            console.error("Error sending data:", error);
+        }
+    });
+}
+
+function openImageDialog(imageUrl, coordinates) {
+    $('#editOptions, #editButton, #saveButton').hide();
+
+    var parts = imageUrl.split('/');
+    var label = parts[parts.length - 2];
+
+    $('#imageLabel').text("Label: " + label);
+    drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the selected image
+    $('#imageCanvas').attr('src', imageUrl);
+    $('#imageModal').modal('show');
+
+    if (confirmationReceived) {
+        $('#editOptions, #editButton, #saveButton').show();
+
+        var handleResponse = function (response) {
+            // Handle response differently when confirmation is true
+            if (editOptionValue === 'false_positive') {
+                currentImages = response.false_positive_image;
+            } else if (editOptionValue === 'true_positive') {
+                currentImages = response.true_positive_image;
+            } else if (editOptionValue === 'name_mismatch') {
+                currentImages = response.name_mismatch_image;
+            } else {
+                currentImages = $('#imageDisplay').find('img').map(function () {
+                    return $(this).attr('src');
+                }).get();
+            }
 
 
+            currentImageIndex = currentImages.indexOf(imageUrl);
+            updateStatus(imageStates[imageUrl]);
+            updateImageBorder(imageUrl);
+            $('#imageCount').text((currentImageIndex + 1) + "/" + currentImages.length);
+            updateSelectedImageBorder();
+        };
+        // Send the selected option value to the server with the callback function
+        sendOptionValueToServer(editOptionValue, handleResponse);
+
+    } else {
+        $('#editOptions, #editButton, #saveButton').hide();
+
+        // Handle response differently when confirmation is false
+        currentImages = $('#imageDisplay').find('img').map(function () {
+            return $(this).attr('src');
+        }).get();
+
+        currentImageIndex = currentImages.indexOf(imageUrl);
+        updateStatus(imageStates[imageUrl]);
+        updateImageBorder(imageUrl);
+        $('#imageCount').text((currentImageIndex + 1) + "/" + currentImages.length);
+        updateSelectedImageBorder();
+    }
+    //  confirmationReceived = false;
+
+}
+
+
+
+function sendOptionValueToServer(optionValue, callback) {
+    $.ajax({
+        type: "POST",
+        url: "/return_option_value",
+        contentType: "application/json",
+        data: JSON.stringify({ option: optionValue }),
+        success: function (response) {
+            // Handle the response from the server
+            console.log("Response from server:", response);
+            // Pass the updated currentImages to the callback function
+            callback(response);
+        },
+        error: function (xhr, status, error) {
+            console.error("Error sending selected option to server:", error);
+        }
+    });
+}

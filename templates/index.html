@@ -76,10 +76,36 @@
     <div id="loadingSpinner" class="spinner-border text-primary ml-2" role="status" style="display: none;">
         <span class="sr-only">Loading...</span>
     </div>
+    <div id="folderNotFound"
+        style="display: none; text-align: center; position: fixed; top: 50px; bottom: 50px; left: 0; right: 0;">
+        <i class="fas fa-folder-open" style="font-size: 64px;"></i> <!-- Font Awesome icon -->
+        <p>No items</p>
+    </div>
+
 
     <div id="millFolders"></div>
-    <button id="backButton" class="btn btn-outline-secondary d-none" onclick="goBack()">Back</button>
-    <button id="submitBtn" class="btn btn-primary d-none" onclick="submitImages()">Submit</button>
+
+    <div class="row">
+        <div class="col">
+            <button id="backButton" class="btn btn-outline-secondary d-none" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i> <!-- Font Awesome back icon -->
+                Back <!-- Text for the button -->
+            </button>
+        </div>
+        <!-- Start of Submit and Start Subtraction buttons -->
+        <div class="col text-right">
+            <div class="role">
+
+                <button id="startSubtractionBtn" class="btn btn-secondary d-none"
+                    onclick="startSubtraction()">Start</button>
+
+                <button id="submitBtn" class="btn btn-primary d-none" onclick="submitImages()">Submit</button>
+            </div>
+        </div>
+        <!-- End of Submit and Start Subtraction buttons -->
+    </div>
+
+
 
 
     <div id="imageDisplay" class="mt-6"></div>
@@ -96,38 +122,31 @@
                 </div>
                 <div class="modal-body">
                     <div class="image-info">
-                        <p id="imageLabel" class="info-item"></p>
-                        <p id="status" class="info-item"></p>
-                        <div class="image-info">
+                        <div class="info-item-container">
                             <p id="imageLabel" class="info-item"></p>
                             <p id="status" class="info-item"></p>
-                            <button id="editButton" class="btn btn-primary" style="display: none;"
-                                onclick="showEditOptions()">Edit</button>
-                            <!-- Dropdown select menu -->
-                            <select id="editOptions" class="form-control mt-3" style="display: none;">
-                                <option value="all_images">All</option>
-                                <option value="false_positive">False Positive</option>
+                        </div>
+                        <div class="info-right">
+                            <select id="editOptions" class="form-control">
+                                <option value="all_images" selected>All</option>
                                 <option value="true_positive">True Positive</option>
+                                <option value="false_positive">False Positive</option>
                                 <option value="name_mismatch">Name Mismatch</option>
                             </select>
-
-
+                            <!-- <button id="editButton" class="btn btn-primary" style="display: none;" -->
+                                <!-- onclick="showEditOptions()">Edit</button> -->
+                            <button id="saveButton" class="btn btn-success" style="display: none;"
+                                onclick="showSecondaryDialog()">Save</button>
                         </div>
-
-                        <!-- 
-                                add edit button and drop down select
-                                the drop down selcted itme is false passitve,true passtive,name mismatch
-                                and one condition
-                                this tow open when is hwo 
-                                uer when clikc yest button
-                                the show the this tow optn 
-                            -->
                     </div>
-                    <!-- <iframe id="imageFrame" frameborder="0" style="width:100%;height:700px;"></iframe> -->
-                    <canvas id="imageCanvas"></canvas>
 
+
+
+
+
+                    <canvas id="imageCanvas" frameborder="0" style="width:100%;height:700px;"></canvas>
+                    <!-- <canvas id="imageCanvas"></canvas> -->
                     <p id="imageCount"></p>
-
                     <!-- <p>Shortcut Keys:</p> -->
                     <ul class="shortcut-keys">
                         <li>- Next Image: D</li>
@@ -137,8 +156,8 @@
                         <li>- Name Mismatch: Up Arrow</li>
                     </ul>
                 </div>
-
             </div>
+
 
         </div>
     </div>

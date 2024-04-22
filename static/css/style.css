@@ -21,11 +21,38 @@ header h3 {
     margin: auto;
 }
 
-.folder-icon {
-    width: 40px;
-    height: 40px;
-    margin-right: 5px;
+.folder-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    /* 4 columns with equal width */
+    gap: 20px;
+    /* Gap between grid items */
+    padding: 20px;
+    /* Padding for the grid container */
+    overflow-x: hidden;
 }
+
+.folder-item {
+    border: 1px solid #ccc;
+    /* Border for each folder item */
+    padding: 20px;
+    /* Padding for each folder item */
+    text-align: center;
+    /* Center align the folder contents */
+}
+
+.folder-icon {
+    width: 110px;
+    /* Width of the folder icon */
+    height: auto;
+    /* Maintain aspect ratio */
+}
+
+.folder-details {
+    margin-top: 10px;
+    /* Margin for folder details */
+}
+
 
 #millFolders ul {
     list-style: none;
@@ -142,16 +169,89 @@ header h3 {
     font-size: 5rem;
 }
 
-
-#backButton,
-#submitBtn {
-    padding: 10px 20px;
-    width: 150px;
-    margin: 10px;
+.role {
+    display: flex;
+    justify-content: flex-end;
+    gap: 2px;
+    /* 2px space between Submit and Start Subtraction buttons */
+    padding: 30px;
+    /* Add padding around the contents */
 }
 
-#submitBtn {
+
+
+
+
+
+/* Add margin between buttons */
+#startSubtractionBtn {
+    margin-right: 20px;
+    /* Add space between buttons */
+}
+
+
+
+#backButton,
+#submitBtn,
+#startSubtractionBtn {
+    padding: 10px;
+    /* Padding on all sides */
+    width: 150px;
+}
+
+#submitBtn,
+#startSubtractionBtn {
     background-color: green;
+    /* Adjust color as needed */
     border-color: green;
+    /* Adjust color as needed */
     color: white;
+}
+
+#backButton {
+    background-color: transparent;
+    /* Transparent background */
+    border-color: transparent;
+    /* Transparent border */
+    color: black;
+    /* Button text color */
+}
+
+#backButton:hover {
+    color: blue;
+    /* Change text color on hover */
+}
+
+
+
+#folderNotFound {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+
+
+.image-info {
+    display: flex;
+    justify-content: space-between; /* Aligns items horizontally */
+}
+
+.info-item-container {
+    display: flex; /* Display items horizontally */
+}
+
+.info-item {
+    margin-right: 10px; /* Add spacing between label and status */
+}
+
+.info-right {
+    display: flex; /* Display items horizontally */
+    align-items: center; /* Vertically center items */
+}
+
+.info-right select,
+.info-right button {
+    margin-left: 10px; /* Add spacing between select and buttons */
 }
