@@ -581,6 +581,7 @@ function gosubmitBack() {
 
     currentImages = [];
     imageStates = {};
+    currentImageCoordinates=[];
 }
 
 function getRollNumberFromUrl(imageUrl) {
