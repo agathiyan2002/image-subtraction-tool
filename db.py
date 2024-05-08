@@ -126,7 +126,6 @@ class Database:
         db_name,
         add_defect_data,
     ):
-
         subkeyMap = {
             "1": "lycra",
             "2": "hole",
@@ -140,7 +139,6 @@ class Database:
         }
 
         try:
-
             destination_connection = psycopg2.connect(**self.destination_db_config)
             destination_cursor = destination_connection.cursor()
             defect_counts = {}
@@ -167,11 +165,6 @@ class Database:
                     add_defect_counts[name] += 1
             add_defect_json = json.dumps(add_defect_counts)
 
-            # print("+++++++++++++++++")
-            # print(add_defect_json)
-            # print(defect_counts_json)
-            # print("+++++++++++++++++")
-
             gsm = []
             gg = []
             loop_length = []
@@ -196,44 +189,50 @@ class Database:
             loop_length_json = json.dumps(loop_length)
             fabric_types_json = json.dumps(fabric_types)
             knit_types_json = json.dumps(knit_types)
-            mill_name, machine_name = db_name.split("_")
-            sql_query = """INSERT INTO mill_details (
-                    date, mill_name, machine_name, mdd_defect_count, no_of_revolutions, avg_rpm, gsm,
-                    guage, loop_length, fabric_material, machine_rolling_type, total_alarms,add_defect_count
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s
-                ) ON CONFLICT (date, mill_name, machine_name) DO UPDATE SET
-                    mdd_defect_count = EXCLUDED.mdd_defect_count,
-                    no_of_revolutions = EXCLUDED.no_of_revolutions,
-                    avg_rpm = EXCLUDED.avg_rpm,
-                    gsm = EXCLUDED.gsm,
-                    guage = EXCLUDED.guage,
-                    loop_length = EXCLUDED.loop_length,
-                    fabric_material = EXCLUDED.fabric_material,
-                    machine_rolling_type = EXCLUDED.machine_rolling_type,
-                    total_alarms = EXCLUDED.total_alarms,
-                    add_defect_count=EXCLUDED.add_defect_count;
-                """
-            destination_cursor.execute(
-                sql_query,
-                (
-                    selected_date,
-                    mill_name,
-                    machine_name,
-                    defect_counts_json,
-                    rotation_data,
-                    avg_rpm,
-                    gsm_json,
-                    gg_json,
-                    loop_length_json,
-                    fabric_types_json,
-                    knit_types_json,
-                    alarm_status,
-                    add_defect_json,
-                ),
-            )
+            try:
+                mill_name, machine_name = db_name.split("_")
+            except ValueError as ve:
+                print("Error splitting db_name:", ve)
+                return
+
+            # Check if the record exists
+            check_sql_query = """SELECT COUNT(*) FROM mill_details 
+                                WHERE date = %s AND mill_name = %s AND machine_name = %s"""
+            destination_cursor.execute(check_sql_query, (selected_date, mill_name, machine_name))
+            existing_records = destination_cursor.fetchone()[0]
+        
+
+            if existing_records == 0:  # If no record exists, insert the data
+                sql_query = """INSERT INTO mill_details (
+                        date, mill_name, machine_name, mdd_defect_count, no_of_revolutions, avg_rpm, gsm,
+                        guage, loop_length, fabric_material, machine_rolling_type, total_alarms, add_defect_count
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )"""
+                destination_cursor.execute(
+                    sql_query,
+                    (
+                        selected_date,
+                        mill_name,
+                        machine_name,
+                        defect_counts_json,
+                        rotation_data,
+                        avg_rpm,
+                        gsm_json,
+                        gg_json,
+                        loop_length_json,
+                        fabric_types_json,
+                        knit_types_json,
+                        alarm_status,
+                        add_defect_json,
+                    ),
+                )
+                print("Data inserted successfully.")
+            else:
+          
+                print("Record already exists. Skipping insertion.")
+
             destination_connection.commit()
-            print("Data inserted or updated successfully.")
         except psycopg2.Error as e:
             print("Error inserting or updating data:", e)
         finally:

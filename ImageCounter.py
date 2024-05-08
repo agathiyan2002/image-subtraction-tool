@@ -96,6 +96,7 @@ class ImageCounter:
     def insert_into_db(
         self, mill_name, machine_name, date, count_details, comment, validated
     ):
+
         try:
             conn = psycopg2.connect(self.db_connection_string)
             cursor = conn.cursor()
@@ -110,6 +111,7 @@ class ImageCounter:
             existing_record = cursor.fetchone()
 
             if existing_record:
+                print("+++++ alraedy insdert so update the records")
                 cursor.execute(
                     "UPDATE mill_details SET count_details=%s, comments=%s,folder_validated=%s WHERE date = %s AND mill_name = %s AND machine_name = %s ",
                     (
@@ -122,8 +124,9 @@ class ImageCounter:
                     ),
                 )
             else:
+                print("+++++ not data is not available so insdert the recors")
                 cursor.execute(
-                    "INSERT INTO mill_details (mill_name,machine_name, date, count_details, comments,folder_validated) VALUES (%s, %s,%s,%s, %s)",
+                    "INSERT INTO mill_details (mill_name, machine_name, date, count_details, comments, folder_validated) VALUES (%s, %s, %s, %s, %s, %s)",
                     (
                         mill_name,
                         machine_name,

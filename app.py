@@ -410,6 +410,7 @@ def move_image():
                 db_connection_string = (
                     "dbname='main' user='postgres' host='localhost' password='soft'"
                 )
+                db_instance.fetch_all_databases_data(date)
                 image_counter = ImageCounter(validation_folder, db_connection_string)
                 image_counter.insert_into_db(
                     mill_name, machine_name, date, count_details, comment, validated
@@ -432,7 +433,7 @@ def dashboard():
         selected_date = request.form.get("date")
         db_instance.fetch_all_databases_data(selected_date)
         records = db_instance.fetch_records_by_date(selected_date)
-
+        # print(records)
         modified_records = [
             (
                 (record[:7] + (record[7].strip("{}"),) + record[8:])

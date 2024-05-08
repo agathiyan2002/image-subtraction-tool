@@ -20,7 +20,9 @@ $(document).ready(function () {
         format: 'yyyy-mm-dd',
         autoclose: true,
         todayHighlight: true
-    });
+    }
+
+    );
 
     $(document).keydown(function (e) {
         if ($('#imageModal').is(':visible')) {
@@ -55,7 +57,10 @@ $(document).ready(function () {
         editOptionValue = $(this).val();
     });
 });
+
 function showMillFolders() {
+    currentImageCoordinates = [];
+
     $('#folderNotFound').hide();
     gosubmitBack();
     $('#millFolders').html('');
@@ -96,11 +101,11 @@ function showMillFolders() {
         complete: function () {
             $('#loadingSpinner').hide();
         }
+
     });
 
     dateSent = true;
 }
-
 
 function showErrorDialog(message) {
     bootbox.alert({
@@ -112,6 +117,7 @@ function showErrorDialog(message) {
 }
 
 function updateFolderList(millFoldersWithRollIDs) {
+
     var folderList = "<div class='folder-grid'>"; // Container for the folder grid
     var allEmpty = true; // Flag to track if all objects are empty
 
@@ -155,7 +161,6 @@ function updateFolderList(millFoldersWithRollIDs) {
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
 }
-
 
 function showMissingDateFoldersDialog(missing_date_folders) {
     var dialogContent = "<div style='height: 300px; overflow-y: auto;'>";
@@ -208,7 +213,6 @@ function showImages(millFolder, imageData) {
     $('#startSubtractionBtn').removeClass('d-none');
 }
 
-
 function goBack() {
     $('#millFolders').show();
     $('#backButton').addClass('d-none');
@@ -216,6 +220,7 @@ function goBack() {
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
 }
+
 function submitImages() {
     var anyImageSelected = Object.values(imageStates).some(function (state) {
         return state !== undefined;
@@ -249,26 +254,29 @@ function submitImages() {
         },
         callback: function (result) {
             if (result) {
-                // Show the edit options, edit button, and save button
-                $('#editOptions, #editButton, #saveButton').show();
-
-                // Set the confirmationReceived flag to true
-                confirmationReceived = true;
-
-                // You may want to trigger the 'click' event of the first image here
-                var firstImageUrl = currentImages[0];
-                var coordinates = currentImageCoordinates[0];
-                showSeparateTpFpNmmImages();
-                openImageDialog(firstImageUrl, coordinates);
-            } else {
-                // Hide the edit options, edit button, and save button if "No" is clicked
-                $('#editOptions, #editButton, #saveButton').hide();
                 showSecondaryDialog();
+
+                // Show the edit options, edit button, and save button
+                // $('#editOptions, #editButton, #saveButton').show();
+
+                // // Set the confirmationReceived flag to true
+                // confirmationReceived = true;
+
+                // // You may want to trigger the 'click' event of the first image here
+                // var firstImageUrl = currentImages[0];
+                // var coordinates = currentImageCoordinates[0];
+                // showSeparateTpFpNmmImages();
+                // openImageDialog(firstImageUrl, coordinates);
+            } else {
+                bootbox.hideAll();
+
+                // Hide the edit options, edit button, and save button if "No" is clicked
+                // $('#editOptions, #editButton, #saveButton').hide();
+                // showSecondaryDialog();
             }
         }
     });
 }
-
 
 function showQualityCheckingFrame() {
     $('#qualityCheckingFrame').removeClass('d-none');
@@ -305,12 +313,12 @@ function showSecondaryDialog() {
                     var comment = $('#comment').val();
                     proceedWithSubmission();
                     $('#imageModal').modal('hide'); // Close the image viewer dialog
+
                 }
             }
         }
     });
 }
-
 
 function proceedWithSubmission() {
     var submissionData = [];
@@ -402,7 +410,6 @@ function proceedWithSubmission() {
     gosubmitBack();
 }
 
-
 function getLabelFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
     if (parts.length >= 2) {
@@ -410,8 +417,6 @@ function getLabelFromUrl(imageUrl) {
     }
     return null;
 }
-
-
 
 function getMillNameFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
@@ -559,6 +564,8 @@ function goBack() {
 
                 currentImages = [];
                 imageStates = {};
+                currentImageCoordinates = [];
+
             }
         }
     });
@@ -672,24 +679,31 @@ function showSeparateTpFpNmmImages() {
     var tpImages = [];
     var fpImages = [];
     var nmmImages = [];
+    var tpImageCoordinates = [];
+    var fpImageCoordinates = [];
+    var nmmImageCoordinates = [];
 
     currentImages.forEach(function (imageUrl) {
         var state = imageStates[imageUrl];
+        var coordinates = currentImageCoordinates[currentImages.indexOf(imageUrl)];
 
         if (state === 'tp') {
             tpImages.push(imageUrl);
+            tpImageCoordinates.push(coordinates);
         } else if (state === 'fp') {
             fpImages.push(imageUrl);
+            fpImageCoordinates.push(coordinates);
         } else if (state === 'nmm') {
             nmmImages.push(imageUrl);
+            nmmImageCoordinates.push(coordinates);
         }
     });
 
     var result = {
-        tpImages: tpImages,
-        fpImages: fpImages,
-        nmmImages: nmmImages,
-        allImages: currentImages // Include all images
+        tpImages: { images: tpImages, coordinates: tpImageCoordinates },
+        fpImages: { images: fpImages, coordinates: fpImageCoordinates },
+        nmmImages: { images: nmmImages, coordinates: nmmImageCoordinates },
+        allImages: { images: currentImages, coordinates: currentImageCoordinates }
     };
 
     // Send the result to the Flask server
@@ -707,6 +721,7 @@ function showSeparateTpFpNmmImages() {
     });
 }
 
+
 function openImageDialog(imageUrl, coordinates) {
     $('#editOptions, #editButton, #saveButton').hide();
 
@@ -717,6 +732,9 @@ function openImageDialog(imageUrl, coordinates) {
     drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the selected image
     $('#imageCanvas').attr('src', imageUrl);
     $('#imageModal').modal('show');
+    console.log("++++++++++++++++++++++");
+    console.log("editOptionValue", editOptionValue);
+    console.log("++++++++++++++++++++++");
 
     if (confirmationReceived) {
         $('#editOptions, #editButton, #saveButton').show();
@@ -725,10 +743,13 @@ function openImageDialog(imageUrl, coordinates) {
             // Handle response differently when confirmation is true
             if (editOptionValue === 'false_positive') {
                 currentImages = response.false_positive_image;
+                console.log("currentImages", currentImages);
             } else if (editOptionValue === 'true_positive') {
-                currentImages = response.true_positive_image;
+                currentImages = response.true_positive_image.images;
+                currentImageCoordinates = response.true_positive_image.coordinates;
             } else if (editOptionValue === 'name_mismatch') {
-                currentImages = response.name_mismatch_image;
+                currentImages = response.name_mismatch_image.images;
+                currentImageCoordinates = response.name_mismatch_image.coordinates;
             } else {
                 currentImages = $('#imageDisplay').find('img').map(function () {
                     return $(this).attr('src');
@@ -762,8 +783,6 @@ function openImageDialog(imageUrl, coordinates) {
     //  confirmationReceived = false;
 
 }
-
-
 
 function sendOptionValueToServer(optionValue, callback) {
     $.ajax({
