@@ -10,6 +10,7 @@ class Database:
         self.destination_db_config = destination_db_config
 
     def fetch_all_databases_data(self, selected_date):
+        source_connection = None  # Ensure source_connection is initialized
         try:
             source_connection = psycopg2.connect(**self.source_db_config)
             source_cursor = source_connection.cursor()
@@ -26,7 +27,7 @@ class Database:
             if source_connection:
                 source_cursor.close()
                 source_connection.close()
-
+   
     def fetch_defect_data(self, selected_date, db_name):
         try:
             self.source_db_config["database"] = db_name
