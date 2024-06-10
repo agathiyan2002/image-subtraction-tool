@@ -12,7 +12,6 @@ import schedule
 import threading
 import time
 from ImageCounter import ImageCounter
-
 import shutil
 import json
 
@@ -50,203 +49,6 @@ except FileNotFoundError:
     database = None
 
 
-def fetch_roll_details(selected_date):
-    all_roll_details = {}
-    error_databases = []  # List to store names of databases where an error occurred
-    try:
-        connection = psycopg2.connect(
-            user="postgres",
-            password="soft",
-            host="localhost",
-            port="5432",
-            database="postgres",
-        )
-
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner');"
-        )
-        db_names = cursor.fetchall()
-
-        for db_name in db_names:
-            db_name = db_name[0]
-            try:
-                db_connection = psycopg2.connect(
-                    user="postgres",
-                    password="soft",
-                    host="localhost",
-                    port="5432",
-                    database=db_name,
-                )
-                db_cursor = db_connection.cursor()
-
-                sql_query = """
-                    SELECT roll_name, timestamp, roll_id 
-                    FROM roll_details 
-                    WHERE DATE(timestamp) = %s
-                """
-                db_cursor.execute(sql_query, (selected_date,))
-                roll_details = db_cursor.fetchall()
-
-                sql_query = """
-                    SELECT filename, coordinate
-                    FROM defect_details
-                    WHERE DATE(timestamp) = %s 
-                        AND add_imagepath IS NOT NULL 
-                        AND roll_id = %s
-                """
-                if roll_details:
-                    for roll_number, date, roll_id in roll_details:
-                        db_cursor.execute(sql_query, (selected_date, roll_id))
-                        rows = db_cursor.fetchall()
-                        file_names = [row[0] for row in rows]
-                        coordinates = [row[1] for row in rows]
-                        formatted_roll_details = {
-                            "roll_number": roll_number,
-                            "date": date.strftime("%Y-%m-%d"),
-                            "file_names": file_names,
-                            "coordinates": coordinates,
-                        }
-                        if db_name not in all_roll_details:
-                            all_roll_details[db_name] = []
-                        all_roll_details[db_name].append(formatted_roll_details)
-
-                db_cursor.close()
-                db_connection.close()
-            except psycopg2.Error as db_error:
-                print(
-                    f"Error fetching roll details from database {db_name}: {db_error}"
-                )
-                error_databases.append(db_name)
-        # print(all_roll_details)
-        return all_roll_details, error_databases
-    except psycopg2.Error as global_error:
-        print("Global error fetching roll details:", global_error)
-        return None, error_databases
-    finally:
-        if connection:
-            cursor.close()
-            connection.close()
-
-
-def filter_images(images, file_names, coordinates):
-    filtered_images = []
-    for image in images:
-        image_filename = image["image_path"].split("/")[-1]
-        if image_filename in file_names:
-            # Add coordinates to the image data structure
-            image["coordinates"] = coordinates[file_names.index(image_filename)]
-            filtered_images.append(image)
-    return filtered_images
-
-
-def check_roll_details_exist(formatted_roll_details, base_folder):
-    all_mill_images = []
-    missing_date_folders = []
-    for database_name, roll_details in formatted_roll_details.items():
-        database_parts = database_name.split("_")
-        if len(database_parts) != 2:
-            print(f"Invalid database name format: {database_name}")
-            continue
-
-        database_name = database_parts[0]
-        machine_name = database_parts[1]
-
-        database_images = {}
-        for roll_detail in roll_details:
-            roll_number = roll_detail["roll_number"]
-            date = roll_detail["date"]
-            file_names = roll_detail["file_names"]
-            coordinate = roll_detail["coordinates"]
-            # print("++++++++++++++++++")
-            # print("_db name", database_name)
-            # print("roll naumber", roll_number)
-            # print("file_names", file_names)
-            # print("coordinate", coordinate)
-            # print("++++++++++++++++++")
-
-            if (
-                base_folder is not None
-                and database_name is not None
-                and machine_name is not None
-                and roll_number is not None
-                and date is not None
-            ):
-                # print(database_name, ":", file_names)
-                date_folder = os.path.join(
-                    base_folder, database_name, machine_name, roll_number, date
-                )
-                if not os.path.exists(date_folder):
-                    missing_date_folders.append(date_folder)
-                    continue
-                images = decrypt_and_save_images(
-                    date_folder,
-                    machine_name,
-                    database_name,
-                    roll_number,
-                    date,
-                )
-
-                # print("iamges", images)
-                filtered_images = filter_images(images, file_names, coordinate)
-                # print("Filtered Images:", filtered_images)
-                if filtered_images:
-                    if database_name not in database_images:
-                        database_images[database_name] = {}
-                    if roll_number not in database_images[database_name]:
-                        database_images[database_name][roll_number] = {}
-                    if date not in database_images[database_name][roll_number]:
-                        database_images[database_name][roll_number][
-                            date
-                        ] = filtered_images
-            else:
-                print("One or more components are None.")
-        all_mill_images.append(database_images)
-
-    return all_mill_images, missing_date_folders
-
-
-def decrypt_and_save_images(
-    date_folder, machine_name, database_name, roll_number, date
-):
-    images = []
-    stored_images = set()
-    for root, _, files in os.walk(date_folder):
-        for file in files:
-            if file.endswith(".json"):
-                json_file_path = os.path.join(root, file)
-                with open(json_file_path, "r") as f:
-                    json_data = json.load(f)
-                image_data = base64.b64decode(json_data["imageData"])
-                label_folder_path = os.path.join(
-                    destination_folder,
-                    database_name,
-                    machine_name,
-                    roll_number,
-                    date,
-                    json_data["shapes"][0]["label"],
-                )
-                os.makedirs(label_folder_path, exist_ok=True)
-                image_path = os.path.join(
-                    label_folder_path, os.path.basename(json_data["imagePath"])
-                )
-                if image_path not in stored_images:
-                    if not os.path.exists(image_path):
-                        with open(image_path, "wb") as img_file:
-                            img_file.write(image_data)
-                        # Extract coordinates
-                        coordinates = json_data.get("coordinates", [])
-                        images.append(
-                            {
-                                "label": json_data["shapes"][0]["label"],
-                                "image_path": image_path,
-                                "coordinates": coordinates,
-                            }
-                        )
-                        stored_images.add(image_path)
-    return images
-
-
 @app.route("/update-records", methods=["POST"])
 def update_records_api():
     if request.method == "POST":
@@ -261,60 +63,133 @@ def update_records_api():
             return jsonify({"error": "Failed to update record"}), 500
 
 
+# Define the function to decrypt and save images
+def decrypt_and_save_images_from_base_folder(base_folder, destination_folder, date):
+    images_dict = {}
+
+    for root, dirs, files in os.walk(base_folder):
+        # Filter out 'confign' directories
+        dirs[:] = [d for d in dirs if d != "confign"]
+
+        for file in files:
+            if file.endswith(".json"):
+                json_file_path = os.path.join(root, file)
+                try:
+                    with open(json_file_path, "r") as f:
+                        json_data = json.load(f)
+
+                    # Decode image data from the JSON file
+                    image_data = base64.b64decode(json_data["imageData"])
+
+                    # Construct the destination path for the image
+                    relative_path = os.path.relpath(root, base_folder)
+
+                    # Remove 'knit-i' from the relative path if it exists
+                    if "knit-i" in relative_path:
+                        relative_path_parts = relative_path.split(os.sep)
+                        if "knit-i" in relative_path_parts:
+                            relative_path_parts.remove("knit-i")
+                        relative_path = os.path.join(*relative_path_parts)
+
+                    # Extracting mill name, roll number, and date from the path
+                    parts = relative_path.split(os.sep)
+                    if len(parts) < 3:
+                        print(
+                            f"Skipping file with insufficient path information: {json_file_path}"
+                        )
+                        continue
+
+                    mill_name = parts[0]
+                    roll_number = parts[4]
+                    file_date = parts[5]
+
+                    # Check if the folder's date matches the given date
+                    if date is not None and file_date != date:
+                        continue
+
+                    label_folder_path = os.path.join(
+                        destination_folder,
+                        relative_path,
+                        json_data["shapes"][0]["label"],
+                    )
+                    os.makedirs(label_folder_path, exist_ok=True)
+                    image_path = os.path.join(
+                        label_folder_path, os.path.basename(json_data["imagePath"])
+                    )
+
+                    # Save the image if it has not been saved already
+                    if not os.path.exists(image_path):
+                        with open(image_path, "wb") as img_file:
+                            img_file.write(image_data)
+
+                        coordinates = json_data["shapes"][0].get("points", [])
+
+                        # Store image data in the nested dictionary
+                        if mill_name not in images_dict:
+                            images_dict[mill_name] = {}
+                        if roll_number not in images_dict[mill_name]:
+                            images_dict[mill_name][roll_number] = {}
+                        if file_date not in images_dict[mill_name][roll_number]:
+                            images_dict[mill_name][roll_number][file_date] = []
+
+                        images_dict[mill_name][roll_number][file_date].append(
+                            {
+                                "label": json_data["shapes"][0]["label"],
+                                "image_path": image_path,
+                                "coordinates": coordinates,
+                            }
+                        )
+                except json.JSONDecodeError as e:
+                    print(f"Error decoding JSON file {json_file_path}: {e}")
+                except Exception as e:
+                    print(f"Unexpected error processing file {json_file_path}: {e}")
+
+    return images_dict
+
+
+import datetime
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     global validation_folder
-    roll_details = []
     alert_message = ""
-    all_mill_images = []
-
+    global base_folder
     if request.method == "POST":
         clear_temp_folder()
         selected_date = request.form["date"]
-        roll_details, error_databases = fetch_roll_details(selected_date)
+        formatted_selected_date = datetime.datetime.strptime(selected_date, "%Y-%m-%d").strftime("%Y-%m-%d")
+        print("Selected date from form:", formatted_selected_date)  # Debug statement
         validated_folder = (
             {
                 mill_name: folder_validated
                 for mill_name, folder_validated in db_instance.validate_folder(
-                    selected_date
+                    formatted_selected_date
                 )
             }
-            if db_instance.validate_folder(selected_date) is not None
+            if db_instance.validate_folder(formatted_selected_date) is not None
             else {}
         )
-        print("validate", validation_folder)
+        print("Validated folder:", validated_folder)  # Debug statement
 
-        # call validate_folder fuinc store the variavel return value
-        # print("++++++++++++++")
-        # print("roll_details", roll_details)
-        # print("++++++++++++++")
-        # print("eror db file", error_databases)
-        if roll_details == {}:
-
+        all_images = decrypt_and_save_images_from_base_folder(
+            base_folder, destination_folder, formatted_selected_date
+        )
+        print("All images:", all_images)  # Debug statement
+ 
+        if all_images == {}:
             alert_message = "false"
             return jsonify({"alert_message": alert_message})
-
         else:
-
             alert_message = "true"
-            global base_folder
-            all_mill_images, missing_date_folders = check_roll_details_exist(
-                roll_details, base_folder
-            )
-            # print("************************")
-            # print(all_mill_images)
-            # print("************************")
 
-            return jsonify(
-                {
-                    "all_mill_images": all_mill_images,
-                    "missing_date_folders": missing_date_folders,
-                    "validation_folder": validation_folder,
-                    "alert_message": alert_message,
-                    "error_databases": error_databases,
-                    "validated_folder": validated_folder,
-                }
-            )
+        return jsonify(
+            {
+                "all_mill_images": all_images,
+                "validation_folder": validation_folder,
+                "alert_message": alert_message,
+                "validated_folder": validated_folder,
+            }
+        )
 
     return render_template("index.html")
 

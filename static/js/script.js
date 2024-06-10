@@ -76,11 +76,11 @@ function showMillFolders() {
         data: { date: formattedDate },
         success: function (response) {
             millFoldersWithRollIDs = response["all_mill_images"];
-            console.log("millFoldersWithRollIDs", millFoldersWithRollIDs);
-            missing_date_folders = response["missing_date_folders"];
+            // console.log("millFoldersWithRollIDs", millFoldersWithRollIDs);
+            // missing_date_folders = response["missing_date_folders"];
             validation_folder = response["validation_folder"];
             alert_message = response["alert_message"];
-            error_databases = response["error_databases"];
+            // error_databases = response["error_databases"];
             validated_folder = response["validated_folder"];
             // console.log("validation_folder", validation_folder);
             // console.log("millFoldersWithRollIDs", millFoldersWithRollIDs);
@@ -91,9 +91,9 @@ function showMillFolders() {
 
             updateFolderList(millFoldersWithRollIDs);
 
-            if (missing_date_folders.length > 0) {
-                showMissingDateFoldersDialog(missing_date_folders);
-            }
+            // if (missing_date_folders.length > 0) {
+            //     showMissingDateFoldersDialog(missing_date_folders);
+            // }
         },
         error: function (xhr, status, error) {
             console.error(xhr.responseText);
@@ -117,18 +117,25 @@ function showErrorDialog(message) {
 }
 
 function updateFolderList(millFoldersWithRollIDs) {
-
     var folderList = "<div class='folder-grid'>"; // Container for the folder grid
     var allEmpty = true; // Flag to track if all objects are empty
 
-    millFoldersWithRollIDs.forEach(function (millData) {
-        for (var millName in millData) {
-            if (millData[millName] !== null && millData[millName] !== undefined) {
+    // Iterate over the properties of the millFoldersWithRollIDs object
+    for (var millName in millFoldersWithRollIDs) {
+        if (millFoldersWithRollIDs.hasOwnProperty(millName)) {
+            var millData = millFoldersWithRollIDs[millName];
+            // Check if millData is not empty
+            if (millData && Object.keys(millData).length > 0) {
                 allEmpty = false;
-                break; // Exit the loop if non-empty data is found
+                // Add folder item to the grid
+                folderList += "<div class='folder-item' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData) + ")'>" +
+                    "<i class='fas fa-folder folder-icon fa-5x'></i>" + // Font Awesome folder icon with increased size (fa-3x)
+                    "<div class='folder-details'>" +
+                    "<button class='btn btn-link folder-btn'>" + millName + "</button>" + // Folder name button
+                    "</div></div>"; // End of folder item
             }
         }
-    });
+    }
 
     if (allEmpty) {
         $('#folderNotFound').show(); // Show the message if all objects are empty
@@ -138,22 +145,6 @@ function updateFolderList(millFoldersWithRollIDs) {
         return; // Exit the function
     }
 
-    // Generate the folder grid if data is found
-    millFoldersWithRollIDs.forEach(function (millData) {
-        for (var millName in millData) {
-            var validated = validated_folder[millName];
-            var validateIcon = (validated === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
-
-            // Add folder item to the grid
-            folderList += "<div class='folder-item' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData[millName]) + ")'>" +
-                "<i class='fas fa-folder folder-icon fa-5x'></i>" + // Font Awesome folder icon with increased size (fa-3x)
-                "<div class='folder-details'>" +
-                "<button class='btn btn-link folder-btn'>" + millName + "</button>" + // Folder name button
-                validateIcon + // Validation icon
-                "</div></div>"; // End of folder item
-        }
-    });
-
     folderList += "</div>"; // End of folder grid container
 
     $('#millFolders').html(folderList);
@@ -161,6 +152,7 @@ function updateFolderList(millFoldersWithRollIDs) {
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
 }
+
 
 function showMissingDateFoldersDialog(missing_date_folders) {
     var dialogContent = "<div style='height: 300px; overflow-y: auto;'>";
@@ -179,8 +171,6 @@ function showMissingDateFoldersDialog(missing_date_folders) {
 }
 
 function showImages(millFolder, imageData) {
-
-
     var imageList = "<div class='image-container'>";
 
     for (var rollNumber in imageData) {
@@ -188,10 +178,10 @@ function showImages(millFolder, imageData) {
             var imagesCount = imageData[rollNumber][date].length;
 
             imageData[rollNumber][date].forEach(function (imageDataItem) {
-                // console.log("imageDataItem", imageDataItem);
+                console.log("imageDataItem", imageDataItem);
                 var imageSrc = imageDataItem.image_path.replace(/\\/g, "/");
-                var coordinates = JSON.parse(imageDataItem.coordinates);
-                // console.log("sho image coordinage", coordinates);
+                var coordinates = imageDataItem.coordinates; // No need to parse coordinates, it's already an array
+
                 currentImageCoordinates.push(coordinates);
 
                 imageList += "<img src='" + imageSrc + "' alt='Image' onclick='openImageDialog(\"" + imageSrc + "\", " + JSON.stringify(coordinates) + ")'>";
@@ -212,6 +202,7 @@ function showImages(millFolder, imageData) {
     $('#submitBtn').removeClass('d-none');
     $('#startSubtractionBtn').removeClass('d-none');
 }
+
 
 function goBack() {
     $('#millFolders').show();
@@ -613,6 +604,7 @@ function hideQualityCheckingFrame() {
 
 function drawRectanglePlot(imageUrl, coordinates) {
     // console.log("draw ", coordinates);
+
     // Create a new image element
     var img = new Image();
 
@@ -633,13 +625,12 @@ function drawRectanglePlot(imageUrl, coordinates) {
         ctx.drawImage(img, 0, 0);
 
         // Parse coordinates
-        var parsedCoordinates = coordinates.map(parseFloat);
+        var x1 = coordinates[0][0]; // x coordinate of the first point
+        var y1 = coordinates[0][1]; // y coordinate of the first point
+        var x2 = coordinates[1][0]; // x coordinate of the second point
+        var y2 = coordinates[1][1]; // y coordinate of the second point
 
         // Calculate rectangle dimensions
-        var x1 = parsedCoordinates[0];
-        var y1 = parsedCoordinates[1];
-        var x2 = parsedCoordinates[2];
-        var y2 = parsedCoordinates[3];
         var width = x2 - x1;
         var height = y2 - y1;
 
@@ -648,12 +639,13 @@ function drawRectanglePlot(imageUrl, coordinates) {
         ctx.rect(x1, y1, width, height);
 
         // Set border color to white
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 1;
         ctx.strokeStyle = 'white';
         ctx.stroke();
         ctx.closePath();
     };
 }
+
 
 function startSubtraction() {
     // Check if there are images available
@@ -727,6 +719,7 @@ function openImageDialog(imageUrl, coordinates) {
     $('#editOptions, #editButton, #saveButton').hide();
 
     var parts = imageUrl.split('/');
+    // console.log("imageUrl",  imageUrl);
     var label = parts[parts.length - 2];
 
     $('#imageLabel').text("Label: " + label);
