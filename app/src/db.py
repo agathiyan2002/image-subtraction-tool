@@ -1,92 +1,149 @@
-import json,os,psycopg2,logging
+import json, os, psycopg2, logging
  
+class Execute:
+    def select(self, db_config, query, parameters=None):
+        connection = None
+        try:
+            connection = psycopg2.connect(**db_config)
+            cursor = connection.cursor()
+            cursor.execute(query, parameters)
+            return cursor.fetchall()
+        except psycopg2.Error as e:
+            print("Error executing SELECT query:", e)
+            return None
+        except psycopg2.OperationalError as e:
+            print("OperationalError occurred. Reconnecting...")
+            return self.select(db_config, query, parameters)
+        finally:
+            if connection:
+                cursor.close()
+                connection.close()
+
+    def insert(self, db_config, query, parameters=None):
+        connection = None
+        try:
+            connection = psycopg2.connect(**db_config)
+            cursor = connection.cursor()
+            cursor.execute(query, parameters)
+            connection.commit()
+            print("Data inserted successfully.")
+        except psycopg2.Error as e:
+            print("Error inserting data:", e)
+        except psycopg2.OperationalError as e:
+            print("OperationalError occurred. Reconnecting...")
+            self.insert(db_config, query, parameters)
+        finally:
+            if connection:
+                cursor.close()
+                connection.close()
+
+    def update(self, db_config, query, parameters=None):
+        connection = None
+        try:
+            connection = psycopg2.connect(**db_config)
+            cursor = connection.cursor()
+            cursor.execute(query, parameters)
+            connection.commit()
+            print("Record updated successfully.")
+            return True
+        except psycopg2.Error as e:
+            print("Error updating record:", e)
+            return False
+        except psycopg2.OperationalError as e:
+            print("OperationalError occurred. Reconnecting...")
+            self.update(db_config, query, parameters)
+        finally:
+            if connection:
+                cursor.close()
+                connection.close()
 
 class Database:
-    def __init__(self, source_db_config, destination_db_config):
-        self.source_db_config = source_db_config
-        self.destination_db_config = destination_db_config
+    def __init__(self):
+        self.source_db_config = {
+            "user": "postgres",
+            "password": "soft",
+            "host": "localhost",
+            "port": "5432",
+            "database": "postgres",
+        }
+        self.destination_db_config = {
+            "user": "postgres",
+            "password": "soft",
+            "host": "localhost",
+            "port": "5432",
+            "database": "main",
+        }
+        self.execute = Execute()
 
     def fetch_all_databases_data(self, selected_date):
         source_connection = None  # Ensure source_connection is initialized
+
         try:
-            source_connection = psycopg2.connect(**self.source_db_config)
-            source_cursor = source_connection.cursor()
-            source_cursor.execute(
-                "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner');"
-            )
-            database_names = [row[0] for row in source_cursor.fetchall()]
+
+            query = "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner');"
+            data = self.execute.select(self.source_db_config, query, parameters=None)
+
+            database_names = [row[0] for row in data]
             for db_name in database_names:
                 print("Fetching data from database:", db_name)
                 self.fetch_defect_data(selected_date, db_name)
         except psycopg2.Error as e:
             print("Error fetching data from all databases:", e)
-        finally:
-            if source_connection:
-                source_cursor.close()
-                source_connection.close()
-   
+
     def fetch_defect_data(self, selected_date, db_name):
         try:
             self.source_db_config["database"] = db_name
-            source_connection = psycopg2.connect(**self.source_db_config)
-            source_cursor = source_connection.cursor()
-            source_cursor.execute(
-                "SELECT defecttyp_id, timestamp FROM defect_details WHERE DATE(timestamp) = %s",
-                (selected_date,),
+            # Fetch defect data using the select method
+            query = "SELECT defecttyp_id, timestamp FROM defect_details WHERE DATE(timestamp) = %s"
+            defect_data = self.execute.select(
+                self.source_db_config, query, (selected_date,)
             )
-            defect_data = source_cursor.fetchall()
-            source_cursor.execute(
-                "SELECT COUNT(rotation) FROM rotation_details WHERE DATE(timestamp) = %s AND rotation IS NOT NULL",
-                (selected_date,),
+
+            # Fetch rotation data
+            query = "SELECT COUNT(rotation) FROM rotation_details WHERE DATE(timestamp) = %s AND rotation IS NOT NULL"
+            rotation_data = self.execute.select(
+                self.source_db_config, query, (selected_date,)
             )
-            rotation_data = source_cursor.fetchall()
-            source_cursor.execute(
-                """SELECT AVG(count) AS mean_count_per_minute
+
+            # Fetch average RPM
+            query = """
+                SELECT AVG(count) AS mean_count_per_minute
                 FROM (
-                SELECT DATE_TRUNC('minute', timestamp) AS minute_group, COUNT(*) AS count
-                FROM public.rotation_details
-                WHERE DATE(timestamp) = %s
-                GROUP BY minute_group
-                ) AS subquery;""",
-                (selected_date,),
+                    SELECT DATE_TRUNC('minute', timestamp) AS minute_group, COUNT(*) AS count
+                    FROM public.rotation_details
+                    WHERE DATE(timestamp) = %s
+                    GROUP BY minute_group
+                ) AS subquery;
+            """
+            avg_rpm_result = self.execute.select(
+                self.source_db_config, query, (selected_date,)
             )
-            avg_rpm_result = source_cursor.fetchone()
-            avg_rpm = avg_rpm_result[0] if avg_rpm_result else None
-            source_cursor.execute(
-                "SELECT gsm, gg, loop_length, fabric_type, knit_type FROM machine_program_details WHERE DATE(timestamp) = %s",
-                (selected_date,),
-            )
-            machine_program_data = source_cursor.fetchall()
-            source_cursor.execute(
-                "SELECT COUNT(alarmtyp_id) FROM alarm_status WHERE DATE(timestamp) = %s AND alarmtyp_id IS NOT NULL",
-                (selected_date,),
-            )
-            num_alarm_types = source_cursor.fetchone()[0]
+            avg_rpm = avg_rpm_result[0][0] if avg_rpm_result else None
 
-            source_cursor.execute(
-                "SELECT defecttyp_id, timestamp FROM defect_details WHERE DATE(timestamp) = %s  AND add_imagepath IS NOT NULL ",
-                (selected_date,),
+            # Fetch machine program data
+            query = "SELECT gsm, gg, loop_length, fabric_type, knit_type FROM machine_program_details WHERE DATE(timestamp) = %s"
+            machine_program_data = self.execute.select(
+                self.source_db_config, query, (selected_date,)
             )
-            add_defect_data = source_cursor.fetchall()
 
-            # logging.basicConfig(
-            #     filename="log.txt",
-            #     level=logging.INFO,
-            #     format="%(asctime)s - %(levelname)s - %(message)s",
-            # )
+            # Fetch number of alarm types
+            query = "SELECT COUNT(alarmtyp_id) FROM alarm_status WHERE DATE(timestamp) = %s AND alarmtyp_id IS NOT NULL"
+            num_alarm_types_result = self.execute.select(
+                self.source_db_config, query, (selected_date,)
+            )
+            num_alarm_types = (
+                num_alarm_types_result[0][0] if num_alarm_types_result else 0
+            )
 
-            # logging.info("######################################")
-            # logging.info("db name: %s", db_name)
-            # logging.info("Selected Date: %s", selected_date)
-            # logging.info("Defect Data: %s", len(defect_data))
-            # logging.info("Rotation Data: %s", rotation_data)
-            # logging.info("Average RPM: %s", avg_rpm)
-            # logging.info("Machine Program Data: %s", machine_program_data)
-            # logging.info("Number of Alarm Types: %s", num_alarm_types)
-            # logging.info("Database Name: %s", db_name)
-            # logging.info("######################################")
+            # Fetch additional defect data
+            query = "SELECT defecttyp_id, timestamp FROM defect_details WHERE DATE(timestamp) = %s  AND add_imagepath IS NOT NULL"
+            add_defect_data = self.execute.select(
+                self.source_db_config, query, (selected_date,)
+            )
+
             avg_rpm = avg_rpm if avg_rpm is None else round(avg_rpm)
 
+            # Insert fetched data
             self.insert_data(
                 selected_date,
                 defect_data,
@@ -99,11 +156,7 @@ class Database:
             )
         except psycopg2.Error as e:
             print(f"Error fetching data from database {db_name}:", e)
-            return None, None, None, None, None
-        finally:
-            if source_connection:
-                source_cursor.close()
-                source_connection.close()
+ 
 
     def map_keys_to_names(counts, subkeyMap):
         mapped_counts = {}
@@ -137,8 +190,6 @@ class Database:
         }
 
         try:
-            destination_connection = psycopg2.connect(**self.destination_db_config)
-            destination_cursor = destination_connection.cursor()
             defect_counts = {}
             total_revolutions = 0
 
@@ -196,9 +247,11 @@ class Database:
             # Check if the record exists
             check_sql_query = """SELECT COUNT(*) FROM mill_details 
                                 WHERE date = %s AND mill_name = %s AND machine_name = %s"""
-            destination_cursor.execute(check_sql_query, (selected_date, mill_name, machine_name))
-            existing_records = destination_cursor.fetchone()[0]
-        
+            existing_records = self.execute.select(
+                self.destination_db_config,
+                check_sql_query,
+                (selected_date, mill_name, machine_name),
+            )[0][0]
 
             if existing_records == 0:  # If no record exists, insert the data
                 sql_query = """INSERT INTO mill_details (
@@ -207,7 +260,8 @@ class Database:
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )"""
-                destination_cursor.execute(
+                self.execute.insert(
+                    self.destination_db_config,
                     sql_query,
                     (
                         selected_date,
@@ -227,36 +281,28 @@ class Database:
                 )
                 print("Data inserted successfully.")
             else:
-          
                 print("Record already exists. Skipping insertion.")
 
-            destination_connection.commit()
         except psycopg2.Error as e:
             print("Error inserting or updating data:", e)
-        finally:
-            if destination_connection:
-                destination_cursor.close()
-                destination_connection.close()
 
     def fetch_records_by_date(self, selected_date):
-        try:
-            destination_connection = psycopg2.connect(**self.destination_db_config)
-            destination_cursor = destination_connection.cursor()
-            destination_cursor.execute(
-                "SELECT mill_name,machine_name,avg_rpm,guage,gsm,loop_length,uptime,no_of_revolutions,mdd_defect_count,add_defect_count,count_details,comments,machine_brand, machine_dia, model_name, feeder_type, fabric_material, machine_rolling_type, status, internet_status, total_alarms, customer_complaints_requirements, cdc_last_done, latest_action  FROM mill_details WHERE date = %s",
-                (selected_date,),
-            )
-            records = destination_cursor.fetchall()
-
-            return records
-        except psycopg2.Error as e:
-            print("Error fetching records:", e)
-            return None
-        finally:
-            if destination_connection:
-                destination_cursor.close()
-                destination_connection.close()
-
+            try:
+                query = """
+                    SELECT mill_name, machine_name, avg_rpm, guage, gsm, loop_length, uptime, no_of_revolutions,
+                    mdd_defect_count, add_defect_count, count_details, comments, machine_brand, machine_dia, model_name,
+                    feeder_type, fabric_material, machine_rolling_type, status, internet_status, total_alarms,
+                    customer_complaints_requirements, cdc_last_done, latest_action
+                    FROM mill_details
+                    WHERE date = %s
+                """
+                records = self.execute.select(self.destination_db_config, query, (selected_date,))
+                 
+                return records
+            except psycopg2.Error as e:
+                print("Error fetching records:", e)
+                return None
+  
     def update_records(self, updated_record):
         try:
             print(updated_record)
@@ -344,7 +390,8 @@ class Database:
                 WHERE date = %s And mill_name=%s And machine_name=%s
             """
 
-            destination_cursor.execute(
+            self.execute.update(
+                self.destination_db_config,
                 sql_query,
                 (
                     machine_brand,
@@ -388,18 +435,10 @@ class Database:
 
     def validate_folder(self, selected_date):
         try:
-            destination_connection = psycopg2.connect(**self.destination_db_config)
-            destination_cursor = destination_connection.cursor()
-            destination_cursor.execute(
-                "SELECT mill_name, folder_validated FROM mill_details WHERE date = %s",
-                (selected_date,),
-            )
-            folder_data = destination_cursor.fetchall()
+            query = "SELECT mill_name, folder_validated FROM mill_details WHERE date = %s"
+            folder_data = self.execute.select(self.destination_db_config, query, (selected_date,))
+        
             return folder_data
         except psycopg2.Error as e:
             print("Error fetching folder validation data:", e)
             return None
-        finally:
-            if destination_connection:
-                destination_cursor.close()
-                destination_connection.close()

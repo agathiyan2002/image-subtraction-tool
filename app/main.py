@@ -1,51 +1,20 @@
 from src.db import Database
+from src.config import ConfigLoader
 from src.restore_db_files import DBRestorer
 from src.ImageCounter import ImageCounter
 from src.imageproces import ImageProcessor
+from src.databasescheduler import DatabaseScheduler
 from flask import Flask, jsonify, render_template, request
 import time, os, json, shutil, base64, schedule, psycopg2, threading, datetime
 
 app = Flask(__name__)
 
-db_instance = Database(
-    source_db_config={
-        "user": "postgres",
-        "password": "soft",
-        "host": "localhost",
-        "port": "5432",
-        "database": "postgres",
-    },
-    destination_db_config={
-        "user": "postgres",
-        "password": "soft",
-        "host": "localhost",
-        "port": "5432",
-        "database": "main",
-    },
-)
-
-destination_folder = os.path.join("static", "temp")
-
-try:
-    with open("config/config.json", "r") as config_file:
-        config = json.load(config_file)
-        base_folder = config.get("base_folder")
-        validation_folder = config.get("validation")
-        db_folder_path = config.get("database")
-except FileNotFoundError:
-    print("Config file not found!")
-    base_folder = None
-    validation = None
-    database = None
-
-
 @app.route("/update-records", methods=["POST"])
 def update_records_api():
+    db_instance = Database()
     if request.method == "POST":
         updated_record = request.get_json()
-        print("++++++++++++++++++++")
-        print(updated_record)
-        print("++++++++++++++++++++++++ ")
+
         success = db_instance.update_records(updated_record)
         if success:
             return jsonify({"message": "Record updated successfully"})
@@ -55,9 +24,13 @@ def update_records_api():
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    global validation_folder
+    config_loader = ConfigLoader()
+    config = config_loader.config
+    destination_folder = os.path.join("static", "temp")
+    base_folder = config.get("base_folder")
+    validation_folder = config.get("validation")
+    db_instance = Database()
     alert_message = ""
-    global base_folder
     if request.method == "POST":
         image_processor = ImageProcessor(base_folder, destination_folder)
         image_processor.clear_temp_folder()
@@ -76,11 +49,10 @@ def index():
             if db_instance.validate_folder(formatted_selected_date) is not None
             else {}
         )
-        print("Validated folder:", validated_folder)  # Debug statement
 
-        all_images = image_processor.decrypt_and_save_images_from_base_folder(formatted_selected_date)
-
-        print("All images:", all_images)  # Debug statement
+        all_images = image_processor.decrypt_and_save_images_from_base_folder(
+            formatted_selected_date
+        )
 
         if all_images == {}:
             alert_message = "false"
@@ -100,48 +72,11 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/filter_option", methods=["POST"])
-def filter_option():
-    data = request.json
-    # Save the data to a JSON file
-    with open("filtered_images.json", "w") as f:
-        json.dump(data, f)
-    return jsonify({"message": "Data received and saved successfully!"})
-
-
-def get_image_for_option(option):
-    with open("filtered_images.json") as f:
-        data = json.load(f)
-        return data.get(option, "Option not found")
-
-
-@app.route("/return_option_value", methods=["POST"])
-def return_option_value():
-    try:
-        data = request.get_json()
-        option_value = data["option"]
-        print(option_value)
-
-        if option_value == "false_positive":
-            image = get_image_for_option("fpImages")
-            return jsonify({"false_positive_image": image}), 200
-        elif option_value == "true_positive":
-            image = get_image_for_option("tpImages")
-            return jsonify({"true_positive_image": image}), 200
-        elif option_value == "name_mismatch":
-            image = get_image_for_option("nmmImages")
-            return jsonify({"name_mismatch_image": image}), 200
-        elif option_value == "all_images":
-            image = get_image_for_option("allImages")
-            return jsonify({"all_images": image}), 200
-        else:
-            return jsonify({"error": "Invalid option"}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-
 @app.route("/move-image", methods=["POST"])
 def move_image():
+    config_loader = ConfigLoader()
+    config = config_loader.config
+    validation_folder = config.get("validation")
     try:
 
         data = request.json
@@ -156,19 +91,6 @@ def move_image():
 
         print("Source:", source)
         print("Destination:", destination)
-        # print("Mill Name:", mill_name)
-        # print("Date:", date)
-        # print("Count Details:", count_details)  # Print count_details
-        # print("Comment:", comment)  # Print comment
-        # print("validated",validated)
-
-        # print("Comment:", comment)
-
-        # # Handle count_details separately if it's sent as a JSON string
-        # count_details_json = request.form.get("count_details")
-        # if count_details_json:
-        #     count_details = json.loads(count_details_json)
-        #     print("Count Details:", count_details)
 
         try:
             if not os.path.exists(source):
@@ -180,11 +102,11 @@ def move_image():
                 return "File already exists in destination.", 500
             shutil.move(source, destination_path)
             if os.path.exists(destination_path):
-                global validation_folder
+
                 db_connection_string = (
                     "dbname='main' user='postgres' host='localhost' password='soft'"
                 )
-                db_instance.fetch_all_databases_data(date)
+                Database.fetch_all_databases_data(date)
                 image_counter = ImageCounter(validation_folder, db_connection_string)
                 image_counter.insert_into_db(
                     mill_name, machine_name, date, count_details, comment, validated
@@ -203,11 +125,12 @@ def move_image():
 
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
+    db_instance = Database()
     if request.method == "POST":
         selected_date = request.form.get("date")
         db_instance.fetch_all_databases_data(selected_date)
         records = db_instance.fetch_records_by_date(selected_date)
-        # print(records)
+
         modified_records = [
             (
                 (record[:7] + (record[7].strip("{}"),) + record[8:])
@@ -219,8 +142,9 @@ def dashboard():
 
         merged_data = []
         for record in modified_records:
-            defect_counts_mdd = json.loads(record[8])
-            defect_counts_add = json.loads(record[9])
+
+            defect_counts_mdd = json.loads(record[8]) if record[8] else {}
+            defect_counts_add = json.loads(record[9]) if record[9] else {}
 
             subtable = []
             for defect_name in defect_counts_mdd:
@@ -276,30 +200,7 @@ def dashboard():
         return render_template("dashboard.html")
 
 
-def restore_databases_daily():
-    global db_folder_path
-    db_host = "localhost"
-    db_port = "5432"
-    db_user = "postgres"
-    os.environ["PGPASSWORD"] = "soft"
-    db_restore_instance = DBRestorer(db_folder_path, db_host, db_port, db_user)
-    print("Restoring databases...")
-    db_restore_instance.restore_databases()
-    print("Databases restored.")
-
-
-schedule.every().day.at("09:00").do(restore_databases_daily)
-
-
-def run_scheduler():
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
-
-
 if __name__ == "__main__":
-
-    # # restore_databases_daily()
-    # scheduler_thread = threading.Thread(target=run_scheduler)
-    # scheduler_thread.start()
+    # database_scheduler = DatabaseScheduler()
+    # database_scheduler.run_scheduler()
     app.run(debug=True, host="0.0.0.0", port=5000)
