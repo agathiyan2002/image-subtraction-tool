@@ -1,0 +1,2 @@
+docker build -t image_subtraction .
+docker run -it --rm -p 8080:8080 image_subtraction
