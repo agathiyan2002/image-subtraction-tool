@@ -1,8 +1,6 @@
-import os
-import psycopg2
+import os,psycopg2,json
 from collections import defaultdict
-import json
-import json
+ 
 
 
 class ImageCounter:

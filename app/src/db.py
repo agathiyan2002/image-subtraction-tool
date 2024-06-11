@@ -1,8 +1,5 @@
-import json
-import os
-import psycopg2
-import logging
-
+import json,os,psycopg2,logging
+ 
 
 class Database:
     def __init__(self, source_db_config, destination_db_config):
