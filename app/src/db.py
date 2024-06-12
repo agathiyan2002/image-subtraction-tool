@@ -76,8 +76,6 @@ class Database:
         self.execute = Execute()
 
     def fetch_all_databases_data(self, selected_date):
-        source_connection = None  # Ensure source_connection is initialized
-
         try:
 
             query = "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner');"
@@ -85,7 +83,6 @@ class Database:
 
             database_names = [row[0] for row in data]
             for db_name in database_names:
-                print("Fetching data from database:", db_name)
                 self.fetch_defect_data(selected_date, db_name)
         except psycopg2.Error as e:
             print("Error fetching data from all databases:", e)

@@ -7,7 +7,7 @@ class ImageProcessor:
         self.destination_folder = destination_folder
 
     def clear_temp_folder(self):
-        temp_folder = os.path.join("static", "temp")
+        temp_folder = os.path.join("app/static", "temp")
         if os.path.exists(temp_folder):
             shutil.rmtree(temp_folder)
         os.makedirs(temp_folder, exist_ok=True)
@@ -88,8 +88,7 @@ class ImageProcessor:
                                 }
                             )
                     except json.JSONDecodeError as e:
-                        print(f"Error decoding JSON file {json_file_path}: {e}")
+                        pass
                     except Exception as e:
-                        print(f"Unexpected error processing file {json_file_path}: {e}")
-
+                        pass
         return images_dict

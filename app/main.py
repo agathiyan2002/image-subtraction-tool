@@ -1,11 +1,13 @@
 from src.db import Database
+from src.db import Database
 from src.config import ConfigLoader
-from src.restore_db_files import DBRestorer
+import os, json, shutil, datetime
 from src.ImageCounter import ImageCounter
 from src.imageproces import ImageProcessor
 from src.databasescheduler import DatabaseScheduler
 from flask import Flask, jsonify, render_template, request
-import time, os, json, shutil, base64, schedule, psycopg2, threading, datetime
+
+db = Database()
 
 app = Flask(__name__)
 
@@ -21,12 +23,11 @@ def update_records_api():
         else:
             return jsonify({"error": "Failed to update record"}), 500
 
-
 @app.route("/", methods=["GET", "POST"])
 def index():
     config_loader = ConfigLoader()
     config = config_loader.config
-    destination_folder = os.path.join("static", "temp")
+    destination_folder = os.path.join("app/static", "temp")
     base_folder = config.get("base_folder")
     validation_folder = config.get("validation")
     db_instance = Database()
@@ -38,7 +39,7 @@ def index():
         formatted_selected_date = datetime.datetime.strptime(
             selected_date, "%Y-%m-%d"
         ).strftime("%Y-%m-%d")
-        print("Selected date from form:", formatted_selected_date)  # Debug statement
+
         validated_folder = (
             {
                 mill_name: folder_validated
@@ -71,7 +72,6 @@ def index():
 
     return render_template("index.html")
 
-
 @app.route("/move-image", methods=["POST"])
 def move_image():
     config_loader = ConfigLoader()
@@ -88,9 +88,6 @@ def move_image():
         count_details = data["count_details"]  # Extract count_details data
         comment = data["comment"]  # Extract comment data
         validated = data["validated"]
-
-        print("Source:", source)
-        print("Destination:", destination)
 
         try:
             if not os.path.exists(source):
@@ -121,7 +118,6 @@ def move_image():
     except Exception as e:
         print("Error:", e)
         return str(e), 500
-
 
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
@@ -198,7 +194,6 @@ def dashboard():
         return jsonify(modified_records)
     else:
         return render_template("dashboard.html")
-
 
 if __name__ == "__main__":
     # database_scheduler = DatabaseScheduler()

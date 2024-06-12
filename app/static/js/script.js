@@ -178,8 +178,8 @@ function showImages(millFolder, imageData) {
             var imagesCount = imageData[rollNumber][date].length;
 
             imageData[rollNumber][date].forEach(function (imageDataItem) {
-                console.log("imageDataItem", imageDataItem);
-                var imageSrc = imageDataItem.image_path.replace(/\\/g, "/");
+       
+                var imageSrc = imageDataItem.image_path.replace(/\\/g, "/").startsWith("app/") ? imageDataItem.image_path.replace(/\\/g, "/").slice(4) : imageDataItem.image_path.replace(/\\/g, "/");
                 var coordinates = imageDataItem.coordinates; // No need to parse coordinates, it's already an array
 
                 currentImageCoordinates.push(coordinates);
