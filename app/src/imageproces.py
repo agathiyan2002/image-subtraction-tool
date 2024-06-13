@@ -7,9 +7,28 @@ class ImageProcessor:
         self.destination_folder = destination_folder
 
     def clear_temp_folder(self):
-        temp_folder = os.path.join("app/static", "temp")
+        temp_folder = os.path.join("static/", "temp")
         if os.path.exists(temp_folder):
-            shutil.rmtree(temp_folder)
+            try:
+                shutil.rmtree(temp_folder)
+            except PermissionError as e:
+                print(f"PermissionError: {e}. Retrying with elevated permissions.")
+                for root, dirs, files in os.walk(temp_folder, topdown=False):
+                    for name in files:
+                        try:
+                            os.remove(os.path.join(root, name))
+                        except PermissionError as e:
+                            print(f"Failed to remove file {name}: {e}")
+                    for name in dirs:
+                        try:
+                            os.rmdir(os.path.join(root, name))
+                        except PermissionError as e:
+                            print(f"Failed to remove directory {name}: {e}")
+                try:
+                    os.rmdir(temp_folder)
+                except PermissionError as e:
+                    print(f"Failed to remove directory {temp_folder}: {e}")
+
         os.makedirs(temp_folder, exist_ok=True)
 
     def decrypt_and_save_images_from_base_folder(self, date):
@@ -69,26 +88,43 @@ class ImageProcessor:
                         if not os.path.exists(image_path):
                             with open(image_path, "wb") as img_file:
                                 img_file.write(image_data)
-
-                            coordinates = json_data["shapes"][0].get("points", [])
-
-                            # Store image data in the nested dictionary
-                            if mill_name not in images_dict:
-                                images_dict[mill_name] = {}
-                            if roll_number not in images_dict[mill_name]:
-                                images_dict[mill_name][roll_number] = {}
-                            if file_date not in images_dict[mill_name][roll_number]:
-                                images_dict[mill_name][roll_number][file_date] = []
-
-                            images_dict[mill_name][roll_number][file_date].append(
-                                {
-                                    "label": json_data["shapes"][0]["label"],
-                                    "image_path": image_path,
-                                    "coordinates": coordinates,
-                                }
+                            if os.path.exists(image_path):
+                                print(
+                                    f"Image stored successfully in destination folder: {image_path}"
+                                )
+                                print(
+                                    f"Full path of the image: {os.path.abspath(image_path)}"
+                                )
+                            else:
+                                print("Failed to store the image.")
+                        else:
+                            print(
+                                f"Image already exists in destination folder: {image_path}"
                             )
+
+                        # Additional condition if no image is available
+                        if not os.path.exists(image_path):
+                            print("No image available.")
+
+                        coordinates = json_data["shapes"][0].get("points", [])
+
+                        # Store image data in the nested dictionary
+                        if mill_name not in images_dict:
+                            images_dict[mill_name] = {}
+                        if roll_number not in images_dict[mill_name]:
+                            images_dict[mill_name][roll_number] = {}
+                        if file_date not in images_dict[mill_name][roll_number]:
+                            images_dict[mill_name][roll_number][file_date] = []
+
+                        images_dict[mill_name][roll_number][file_date].append(
+                            {
+                                "label": json_data["shapes"][0]["label"],
+                                "image_path": image_path,
+                                "coordinates": coordinates,
+                            }
+                        )
                     except json.JSONDecodeError as e:
-                        pass
+                        print(f"JSON decode error for file {json_file_path}: {e}")
                     except Exception as e:
-                        pass
+                        print(f"Error processing file {json_file_path}: {e}")
         return images_dict

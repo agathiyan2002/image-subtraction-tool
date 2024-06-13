@@ -1,6 +1,5 @@
 import json
 
-
 class ConfigLoader:
     def __init__(self):
  
@@ -8,10 +7,15 @@ class ConfigLoader:
 
     def load_config(self):
         try:
-            with open("app/config/config.json", "r") as config_file:
-                return json.load(config_file)
+            config_file={
+            "base_folder": "/home/alan/projects/",
+            "database": "/home/alan/cloud/Database",
+            "validation": "/static/validation/"
+            }
+
+            return config_file
         except FileNotFoundError:
-            print("Config file not found!")
+            print("Config file not found")
             return {}
         except json.JSONDecodeError:
             print("Error decoding the config file!")

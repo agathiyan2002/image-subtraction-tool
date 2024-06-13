@@ -1,1 +1,6 @@
- app/static/temp/
+ 
+ # Ignore the app/static/temp/ directory
+app/static/temp/
+.idea/
+__pycache__
+app/src/__pycache__

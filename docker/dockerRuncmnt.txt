@@ -5,3 +5,40 @@ docker build -t image_subtraction:latest .
 docker run -it image_subtraction:latest
 
 docker run  -e "DB_PORT=5432" -e "DB_USER=postgres" -e "DB_PASS=soft" -e "DB_HOST=host.docker.internal" -it image_subtraction:latest
+
+
+
+
+sudo docker build -t image_subtraction:latest .
+
+sudo docker run -e  --restart=always -it --name knitting-imagesubtraction  --network=host  -e "DB_PORT=5432" -e "DB_USER=postgres" -e "DB_PASS=soft" -e "DB_HOST=127.0.0.1" --privileged  image_subtraction:latest
+
+
+sudo docker rm -f knitting-imagesubtraction 
+
+
+
+
+sudo docker run -e --restart=always -it --name knitting-imagesubtraction \
+    --network=host \
+    -e "DB_PORT=5432" -e "DB_USER=postgres" -e "DB_PASS=soft" -e "DB_HOST=127.0.0.1" \
+    --privileged \
+    -v /home:/home \
+    -v /home/alan/projects/:/app/projects \
+    -v /home/alan/projects/knit-i/:/app/static/temp \
+    -v /home/alan/cloud/Database:/app/Database \
+    -v /home/alan/validation/:/app/validation \
+    image_subtraction:latest
+
+
+
+sudo docker run -e --restart=always -it --name knitting-imagesubtraction \
+    --network=host \
+    -e "DB_PORT=5432" -e "DB_USER=postgres" -e "DB_PASS=soft" -e "DB_HOST=127.0.0.1" \
+    --privileged \
+    -v /home:/home \
+    -v /home/alan/projects/:/app/projects \
+    -v /home/alan/cloud/Database:/app/Database \
+    -v /home/alan/validation/:/app/static/validation \
+    -v /home/alan/projects/knit-i/temp/:/app/static/temp \
+    image_subtraction:latest

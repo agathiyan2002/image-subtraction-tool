@@ -178,8 +178,11 @@ function showImages(millFolder, imageData) {
             var imagesCount = imageData[rollNumber][date].length;
 
             imageData[rollNumber][date].forEach(function (imageDataItem) {
-       
-                var imageSrc = imageDataItem.image_path.replace(/\\/g, "/").startsWith("app/") ? imageDataItem.image_path.replace(/\\/g, "/").slice(4) : imageDataItem.image_path.replace(/\\/g, "/");
+                // var imageSrc = imageDataItem.image_path.replace(/\\/g, "/").startsWith("app/") ? imageDataItem.image_path.replace(/\\/g, "/").slice(4) : imageDataItem.image_path.replace(/\\/g, "/");
+
+                console.log(imageDataItem);
+                var imageSrc = "/static" + imageDataItem.image_path.replace(/\\/g, "/").slice(imageDataItem.image_path.indexOf('/temp'));
+                console.log(imageSrc);
                 var coordinates = imageDataItem.coordinates; // No need to parse coordinates, it's already an array
 
                 currentImageCoordinates.push(coordinates);
@@ -324,15 +327,27 @@ function proceedWithSubmission() {
 
     currentImages.forEach(function (imageUrl) {
         var state = imageStates[imageUrl];
-
         if (state !== undefined) {
+            console.log(imageUrl);
             var millName = getMillNameFromUrl(imageUrl);
+            var unitName = getMillUnitNameFromUrl(imageUrl);
+            var addname = getAddFromUrl(imageUrl);
             var machineName = getMillMachineNameFromUrl(imageUrl);
             var rollNumber = getRollNumberFromUrl(imageUrl);
             var date = getDateFromUrl(imageUrl);
+            var cameraName = getCameraNameFromUrl(imageUrl);
             var label = getLabelFromUrl(imageUrl);
 
-            var folderPath = validation_folder + millName + "/" + machineName + "/" + rollNumber + "/" + date + "/" + state;
+            var folderPath = validation_folder + millName + "/" + unitName + "/" + addname + "/" + machineName + "/" + rollNumber + "/" + date + "/" + cameraName + "/" + label + "/" + state;
+            console.log("Mill Name:", millName);
+            console.log("Unit Name:", unitName);
+            console.log("Add Name:", addname);
+            console.log("Machine Name:", machineName);
+            console.log("Roll Number:", rollNumber); // Should print "46"
+            console.log("Date:", date); // Should print "2024-05-29"
+            console.log("Camera Name:", cameraName); // Should print the camera name
+            console.log("Label:", label);
+            console.log("Folder Path:", folderPath);
             var imageData = {
                 source: imageUrl,
                 destination: folderPath,
@@ -403,24 +418,40 @@ function proceedWithSubmission() {
 
 function getLabelFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
-    if (parts.length >= 2) {
-        return parts[parts.length - 2];
+    if (parts.length >= 11) {
+        return parts[11];
     }
     return null;
 }
+
 
 function getMillNameFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
-    if (parts.length >= 2) {
-        return parts[2];
+    if (parts.length >= 3) {
+        return parts[3];
     }
     return null;
 }
 
+function getMillUnitNameFromUrl(imageUrl) {
+    var parts = imageUrl.split('/');
+    if (parts.length >= 4) {
+        return parts[4];
+    }
+    return null;
+}
+
+function getAddFromUrl(imageUrl) {
+    var parts = imageUrl.split('/');
+    if (parts.length >= 5) {
+        return parts[5];
+    }
+    return null;
+}
 function getMillMachineNameFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
-    if (parts.length >= 3) {
-        return parts[3];
+    if (parts.length >= 6) {
+        return parts[6];
     }
     return null;
 }
@@ -429,6 +460,30 @@ function getImageLabelFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
     if (parts.length >= 2) {
         return parts[parts.length - 2];
+    }
+    return null;
+}
+
+function getRollNumberFromUrl(imageUrl) {
+    var parts = imageUrl.split('/');
+    if (parts.length >= 7) {
+        return parts[7];
+    }
+    return null;
+}
+
+function getDateFromUrl(imageUrl) {
+    var parts = imageUrl.split('/');
+    if (parts.length >= 8) { // Ensure there are enough parts to access the 7th index
+        return parts[8];
+    }
+    return null;
+}
+
+function getCameraNameFromUrl(imageUrl) {
+    var parts = imageUrl.split('/');
+    if (parts.length >= 9) { // Ensure there are enough parts to access the 7th index
+        return parts[9];
     }
     return null;
 }
@@ -572,26 +627,10 @@ function gosubmitBack() {
 
     currentImages = [];
     imageStates = {};
-    currentImageCoordinates=[];
+    currentImageCoordinates = [];
 }
 
-function getRollNumberFromUrl(imageUrl) {
-    var regex = /\/(\d+)\/\d{4}-\d{2}-\d{2}\//;
-    var match = imageUrl.match(regex);
-    if (match && match.length > 1) {
-        return match[1];
-    }
-    return null;
-}
 
-function getDateFromUrl(imageUrl) {
-    var regex = /\d{4}-\d{2}-\d{2}/;
-    var match = imageUrl.match(regex);
-    if (match && match.length > 0) {
-        return match[0];
-    }
-    return null;
-}
 
 function hideQualityCheckingFrame() {
     $('#qualityCheckingFrame').addClass('d-none');

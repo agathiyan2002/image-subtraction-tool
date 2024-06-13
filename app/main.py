@@ -4,12 +4,12 @@ from src.config import ConfigLoader
 import os, json, shutil, datetime
 from src.ImageCounter import ImageCounter
 from src.imageproces import ImageProcessor
-from src.databasescheduler import DatabaseScheduler
-from flask import Flask, jsonify, render_template, request
 
-db = Database()
+# from src.databasescheduler import DatabaseScheduler
+from flask import Flask, jsonify, render_template, request, send_file
 
 app = Flask(__name__)
+
 
 @app.route("/update-records", methods=["POST"])
 def update_records_api():
@@ -23,11 +23,12 @@ def update_records_api():
         else:
             return jsonify({"error": "Failed to update record"}), 500
 
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     config_loader = ConfigLoader()
     config = config_loader.config
-    destination_folder = os.path.join("app/static", "temp")
+    destination_folder = os.path.join("static/", "temp")
     base_folder = config.get("base_folder")
     validation_folder = config.get("validation")
     db_instance = Database()
@@ -72,6 +73,7 @@ def index():
 
     return render_template("index.html")
 
+
 @app.route("/move-image", methods=["POST"])
 def move_image():
     config_loader = ConfigLoader()
@@ -88,7 +90,7 @@ def move_image():
         count_details = data["count_details"]  # Extract count_details data
         comment = data["comment"]  # Extract comment data
         validated = data["validated"]
-
+        print("source, destination",source, destination)
         try:
             if not os.path.exists(source):
                 return "Source file does not exist.", 500
@@ -118,6 +120,7 @@ def move_image():
     except Exception as e:
         print("Error:", e)
         return str(e), 500
+
 
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
@@ -194,6 +197,7 @@ def dashboard():
         return jsonify(modified_records)
     else:
         return render_template("dashboard.html")
+
 
 if __name__ == "__main__":
     # database_scheduler = DatabaseScheduler()

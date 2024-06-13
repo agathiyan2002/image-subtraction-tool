@@ -7,7 +7,7 @@ ENV TZ=Asia/Kolkata
 
 # Update and install necessary packages
 RUN apt update && \
-    apt install -y python3 python3-pip unzip ffmpeg libsm6 libxext6 shellinabox nano systemd && \
+    apt install -y python3 python3-pip unzip libsm6 libxext6 nano systemd && \
     pip3 install --upgrade pip
 
 # Create and set the working directory
