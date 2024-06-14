@@ -122,16 +122,21 @@ function updateFolderList(millFoldersWithRollIDs) {
 
     // Iterate over the properties of the millFoldersWithRollIDs object
     for (var millName in millFoldersWithRollIDs) {
+        var validated = validated_folder[millName];
+ 
+        var validateIcon = (validated === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
+
         if (millFoldersWithRollIDs.hasOwnProperty(millName)) {
             var millData = millFoldersWithRollIDs[millName];
             // Check if millData is not empty
             if (millData && Object.keys(millData).length > 0) {
                 allEmpty = false;
+
                 // Add folder item to the grid
                 folderList += "<div class='folder-item' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData) + ")'>" +
                     "<i class='fas fa-folder folder-icon fa-5x'></i>" + // Font Awesome folder icon with increased size (fa-3x)
                     "<div class='folder-details'>" +
-                    "<button class='btn btn-link folder-btn'>" + millName + "</button>" + // Folder name button
+                    "<button class='btn btn-link folder-btn'>" + millName + "</button>" + validateIcon +
                     "</div></div>"; // End of folder item
             }
         }
@@ -180,9 +185,9 @@ function showImages(millFolder, imageData) {
             imageData[rollNumber][date].forEach(function (imageDataItem) {
                 // var imageSrc = imageDataItem.image_path.replace(/\\/g, "/").startsWith("app/") ? imageDataItem.image_path.replace(/\\/g, "/").slice(4) : imageDataItem.image_path.replace(/\\/g, "/");
 
-                console.log(imageDataItem);
+                // console.log("imageDataItem", imageDataItem);
                 var imageSrc = "/static" + imageDataItem.image_path.replace(/\\/g, "/").slice(imageDataItem.image_path.indexOf('/temp'));
-                console.log(imageSrc);
+                // console.log(imageSrc);
                 var coordinates = imageDataItem.coordinates; // No need to parse coordinates, it's already an array
 
                 currentImageCoordinates.push(coordinates);
@@ -339,15 +344,7 @@ function proceedWithSubmission() {
             var label = getLabelFromUrl(imageUrl);
 
             var folderPath = validation_folder + millName + "/" + unitName + "/" + addname + "/" + machineName + "/" + rollNumber + "/" + date + "/" + cameraName + "/" + label + "/" + state;
-            console.log("Mill Name:", millName);
-            console.log("Unit Name:", unitName);
-            console.log("Add Name:", addname);
-            console.log("Machine Name:", machineName);
-            console.log("Roll Number:", rollNumber); // Should print "46"
-            console.log("Date:", date); // Should print "2024-05-29"
-            console.log("Camera Name:", cameraName); // Should print the camera name
-            console.log("Label:", label);
-            console.log("Folder Path:", folderPath);
+
             var imageData = {
                 source: imageUrl,
                 destination: folderPath,
@@ -765,9 +762,7 @@ function openImageDialog(imageUrl, coordinates) {
     drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the selected image
     $('#imageCanvas').attr('src', imageUrl);
     $('#imageModal').modal('show');
-    console.log("++++++++++++++++++++++");
-    console.log("editOptionValue", editOptionValue);
-    console.log("++++++++++++++++++++++");
+
 
     if (confirmationReceived) {
         $('#editOptions, #editButton, #saveButton').show();

@@ -10,7 +10,7 @@ class ConfigLoader:
             config_file={
             "base_folder": "/home/alan/projects/",
             "database": "/home/alan/cloud/Database",
-            "validation": "/static/validation/"
+            "validation": "/home/alan/validation/"
             }
 
             return config_file

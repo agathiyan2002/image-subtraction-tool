@@ -89,19 +89,11 @@ class ImageProcessor:
                             with open(image_path, "wb") as img_file:
                                 img_file.write(image_data)
                             if os.path.exists(image_path):
-                                print(
-                                    f"Image stored successfully in destination folder: {image_path}"
-                                )
-                                print(
-                                    f"Full path of the image: {os.path.abspath(image_path)}"
-                                )
+                                pass
                             else:
                                 print("Failed to store the image.")
                         else:
-                            print(
-                                f"Image already exists in destination folder: {image_path}"
-                            )
-
+                            pass
                         # Additional condition if no image is available
                         if not os.path.exists(image_path):
                             print("No image available.")
@@ -124,7 +116,8 @@ class ImageProcessor:
                             }
                         )
                     except json.JSONDecodeError as e:
-                        print(f"JSON decode error for file {json_file_path}: {e}")
+                        # print(f"JSON decode error for file {json_file_path}: {e}")
+                        pass
                     except Exception as e:
                         print(f"Error processing file {json_file_path}: {e}")
         return images_dict

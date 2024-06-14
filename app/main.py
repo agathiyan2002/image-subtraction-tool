@@ -35,7 +35,7 @@ def index():
     alert_message = ""
     if request.method == "POST":
         image_processor = ImageProcessor(base_folder, destination_folder)
-        image_processor.clear_temp_folder()
+        # image_processor.clear_temp_folder()
         selected_date = request.form["date"]
         formatted_selected_date = datetime.datetime.strptime(
             selected_date, "%Y-%m-%d"
@@ -76,11 +76,13 @@ def index():
 
 @app.route("/move-image", methods=["POST"])
 def move_image():
+    db_instance = Database()
     config_loader = ConfigLoader()
     config = config_loader.config
     validation_folder = config.get("validation")
-    try:
+    base_folder = config.get("base_folder")
 
+    try:
         data = request.json
         source = data["source"]
         destination = data["destination"]
@@ -90,22 +92,27 @@ def move_image():
         count_details = data["count_details"]  # Extract count_details data
         comment = data["comment"]  # Extract comment data
         validated = data["validated"]
-        print("source, destination",source, destination)
+
+        source = base_folder + "/knit-i" + source.replace("/static", "")
+
         try:
             if not os.path.exists(source):
                 return "Source file does not exist.", 500
             os.makedirs(destination, exist_ok=True)
             _, filename = os.path.split(source)
             destination_path = os.path.join(destination, filename)
-            if os.path.exists(destination_path):
-                return "File already exists in destination.", 500
-            shutil.move(source, destination_path)
-            if os.path.exists(destination_path):
 
+            if os.path.exists(destination_path):
+                os.remove(destination_path)  # Overwrite by removing the existing file
+
+            shutil.move(source, destination_path)
+
+            if os.path.exists(destination_path):
                 db_connection_string = (
                     "dbname='main' user='postgres' host='localhost' password='soft'"
                 )
-                Database.fetch_all_databases_data(date)
+ 
+                db_instance.fetch_all_databases_data(date)
                 image_counter = ImageCounter(validation_folder, db_connection_string)
                 image_counter.insert_into_db(
                     mill_name, machine_name, date, count_details, comment, validated
