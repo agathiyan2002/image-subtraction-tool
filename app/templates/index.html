@@ -19,11 +19,9 @@
     <header>
         <div class="container-fluid">
             <div class="row justify-content-between align-items-center">
-                <!-- Move the "Image subtraction tool" heading to the left -->
                 <div>
                     <h3 class="mb-0">Day wise consolidated report </h3>
                 </div>
-                <!-- Move the Date Picker to the center -->
                 <div class="col-auto">
                     <div class="input-group">
                         <input type="text" class="form-control datepicker" placeholder="Select date"
@@ -34,7 +32,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- Move the "Dashboard" button to the right -->
                 <div class="col-auto">
                     <div class="row justify-content-end pr-4">
                         <a href="{{ url_for('dashboard') }}" class="btn btn-link text-white mr-3 dashboard-link">
@@ -65,7 +62,6 @@
 
         <!-- Content for quality checking frame -->
         <h2 id="qualityCheckingHeading">Quality Checking</h2>
-        <!-- Add other content here -->
     </div>
 
 
@@ -102,7 +98,6 @@
                 <button id="submitBtn" class="btn btn-primary d-none" onclick="submitImages()">Submit</button>
             </div>
         </div>
-        <!-- End of Submit and Start Subtraction buttons -->
     </div>
 
 
@@ -133,8 +128,6 @@
                                 <option value="false_positive">False Positive</option>
                                 <option value="name_mismatch">Name Mismatch</option>
                             </select>
-                            <!-- <button id="editButton" class="btn btn-primary" style="display: none;" -->
-                                <!-- onclick="showEditOptions()">Edit</button> -->
                             <button id="saveButton" class="btn btn-success" style="display: none;"
                                 onclick="showSecondaryDialog()">Save</button>
                         </div>
@@ -145,9 +138,7 @@
 
 
                     <canvas id="imageCanvas" frameborder="0" style="width:100%;height:700px;"></canvas>
-                    <!-- <canvas id="imageCanvas"></canvas> -->
                     <p id="imageCount"></p>
-                    <!-- <p>Shortcut Keys:</p> -->
                     <ul class="shortcut-keys">
                         <li>- Next Image: D</li>
                         <li>- Previous Image: A</li>

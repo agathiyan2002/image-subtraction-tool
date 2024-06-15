@@ -14,48 +14,32 @@ var tpImages = [];
 var fpImages = [];
 var nmmImages = [];
 var confirmationReceived = false;
-// console.log("out coordinate", currentImageCoordinates);
 $(document).ready(function () {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
         autoclose: true,
         todayHighlight: true
-    }
-
-    );
+    });
 
     $(document).keydown(function (e) {
         if ($('#imageModal').is(':visible')) {
-            // console.log("Key pressed:", e.key); // Check if the correct key is being detected
             if (e.key === 'a') {
-                // console.log("Previous image key pressed");
-                showPreviousImage(); // Check if the function is being called
+                showPreviousImage();
             } else if (e.key === 'd') {
-                // console.log("Next image key pressed");
-                showNextImage(); // Check if the function is being called
+                showNextImage();
             } else if (e.key === 'ArrowLeft') {
-                // console.log("Arrow Left key pressed");
                 setImageState('fp');
                 setTimeout(showNextImage, 1000);
             } else if (e.key === 'ArrowRight') {
-                // console.log("Arrow Right key pressed");
                 setImageState('tp');
                 setTimeout(showNextImage, 1000);
             } else if (e.key === 'ArrowUp') {
-                // console.log("Arrow Up key pressed");
                 setImageState('nmm');
                 setTimeout(showNextImage, 1000);
             }
         }
     });
 
-});
-
-$(document).ready(function () {
-    // Event listener for when the user changes the selection
-    $('#editOptions').on('change', function () {
-        editOptionValue = $(this).val();
-    });
 });
 
 function showMillFolders() {
@@ -76,24 +60,15 @@ function showMillFolders() {
         data: { date: formattedDate },
         success: function (response) {
             millFoldersWithRollIDs = response["all_mill_images"];
-            // console.log("millFoldersWithRollIDs", millFoldersWithRollIDs);
-            // missing_date_folders = response["missing_date_folders"];
             validation_folder = response["validation_folder"];
             alert_message = response["alert_message"];
-            // error_databases = response["error_databases"];
             validated_folder = response["validated_folder"];
-            // console.log("validation_folder", validation_folder);
-            // console.log("millFoldersWithRollIDs", millFoldersWithRollIDs);
             if (alert_message == "false") {
                 showErrorDialog("No records found for the selected date.");
                 return;
             }
 
             updateFolderList(millFoldersWithRollIDs);
-
-            // if (missing_date_folders.length > 0) {
-            //     showMissingDateFoldersDialog(missing_date_folders);
-            // }
         },
         error: function (xhr, status, error) {
             console.error(xhr.responseText);
@@ -117,47 +92,42 @@ function showErrorDialog(message) {
 }
 
 function updateFolderList(millFoldersWithRollIDs) {
-    var folderList = "<div class='folder-grid'>"; // Container for the folder grid
-    var allEmpty = true; // Flag to track if all objects are empty
+    var folderList = "<div class='folder-grid'>";
+    var allEmpty = true;
 
-    // Iterate over the properties of the millFoldersWithRollIDs object
     for (var millName in millFoldersWithRollIDs) {
         var validated = validated_folder[millName];
- 
         var validateIcon = (validated === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
 
         if (millFoldersWithRollIDs.hasOwnProperty(millName)) {
             var millData = millFoldersWithRollIDs[millName];
-            // Check if millData is not empty
             if (millData && Object.keys(millData).length > 0) {
                 allEmpty = false;
 
-                // Add folder item to the grid
                 folderList += "<div class='folder-item' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData) + ")'>" +
-                    "<i class='fas fa-folder folder-icon fa-5x'></i>" + // Font Awesome folder icon with increased size (fa-3x)
+                    "<i class='fas fa-folder folder-icon fa-5x'></i>" +
                     "<div class='folder-details'>" +
                     "<button class='btn btn-link folder-btn'>" + millName + "</button>" + validateIcon +
-                    "</div></div>"; // End of folder item
+                    "</div></div>";
             }
         }
     }
 
     if (allEmpty) {
-        $('#folderNotFound').show(); // Show the message if all objects are empty
-        $('#millFolders').html(''); // Clear any existing folder grid
+        $('#folderNotFound').show();
+        $('#millFolders').html('');
         $('#imageDisplay').html('');
         $('#folderTitle').html('');
-        return; // Exit the function
+        return;
     }
 
-    folderList += "</div>"; // End of folder grid container
+    folderList += "</div>";
 
     $('#millFolders').html(folderList);
-    $('#folderNotFound').hide(); // Hide the message if data is found
+    $('#folderNotFound').hide();
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
 }
-
 
 function showMissingDateFoldersDialog(missing_date_folders) {
     var dialogContent = "<div style='height: 300px; overflow-y: auto;'>";
@@ -180,19 +150,29 @@ function showImages(millFolder, imageData) {
 
     for (var rollNumber in imageData) {
         for (var date in imageData[rollNumber]) {
-            var imagesCount = imageData[rollNumber][date].length;
 
             imageData[rollNumber][date].forEach(function (imageDataItem) {
-                // var imageSrc = imageDataItem.image_path.replace(/\\/g, "/").startsWith("app/") ? imageDataItem.image_path.replace(/\\/g, "/").slice(4) : imageDataItem.image_path.replace(/\\/g, "/");
-
-                // console.log("imageDataItem", imageDataItem);
                 var imageSrc = "/static" + imageDataItem.image_path.replace(/\\/g, "/").slice(imageDataItem.image_path.indexOf('/temp'));
-                // console.log(imageSrc);
-                var coordinates = imageDataItem.coordinates; // No need to parse coordinates, it's already an array
+                var coordinates = imageDataItem.coordinates;
 
                 currentImageCoordinates.push(coordinates);
+           
+                imageStates[imageSrc] = imageDataItem.status;
+          
 
-                imageList += "<img src='" + imageSrc + "' alt='Image' onclick='openImageDialog(\"" + imageSrc + "\", " + JSON.stringify(coordinates) + ")'>";
+                var borderColor = "";
+                if (imageDataItem.status === "tp") {
+                    borderColor = "green"; // True positive
+                } else if (imageDataItem.status === "fp") {
+                    borderColor = "red"; // False positive
+                } else if (imageDataItem.status === "nmm") {
+                    borderColor = "blue"; // Not manually marked
+                } else {
+                    borderColor = "black"; // Default to black if status is unknown
+                }
+                var borderStyle = "style='border: 2px solid " + borderColor + ";'";
+
+                imageList += "<img src='" + imageSrc + "' alt='Image' onclick='openImageDialog(\"" + imageSrc + "\", " + JSON.stringify(coordinates) + ")' " + borderStyle + ">";
             });
         }
     }
@@ -210,7 +190,6 @@ function showImages(millFolder, imageData) {
     $('#submitBtn').removeClass('d-none');
     $('#startSubtractionBtn').removeClass('d-none');
 }
-
 
 function goBack() {
     $('#millFolders').show();
@@ -254,35 +233,11 @@ function submitImages() {
         callback: function (result) {
             if (result) {
                 showSecondaryDialog();
-
-                // Show the edit options, edit button, and save button
-                // $('#editOptions, #editButton, #saveButton').show();
-
-                // // Set the confirmationReceived flag to true
-                // confirmationReceived = true;
-
-                // // You may want to trigger the 'click' event of the first image here
-                // var firstImageUrl = currentImages[0];
-                // var coordinates = currentImageCoordinates[0];
-                // showSeparateTpFpNmmImages();
-                // openImageDialog(firstImageUrl, coordinates);
             } else {
                 bootbox.hideAll();
-
-                // Hide the edit options, edit button, and save button if "No" is clicked
-                // $('#editOptions, #editButton, #saveButton').hide();
-                // showSecondaryDialog();
             }
         }
     });
-}
-
-function showQualityCheckingFrame() {
-    $('#qualityCheckingFrame').removeClass('d-none');
-    $('#backButtonQuaty').removeClass('d-none');
-    $('#qualityCheckingHeading').removeClass('d-none');
-    $('#saveButton').removeClass('d-none');
-    showSeparateTpFpNmmImages();
 }
 
 function showSecondaryDialog() {
@@ -311,8 +266,7 @@ function showSecondaryDialog() {
                 callback: function () {
                     var comment = $('#comment').val();
                     proceedWithSubmission();
-                    $('#imageModal').modal('hide'); // Close the image viewer dialog
-
+                    $('#imageModal').modal('hide');
                 }
             }
         }
@@ -325,15 +279,13 @@ function proceedWithSubmission() {
     var totalFPCount = 0;
     var totalNMMCount = 0;
     var comment = $('#comment').val();
-    var validated = "validated"; // Add the validated variable and assign the value "validated"
+    var validated = "validated";
 
-    // Initialize count details object
     var countDetails = {};
 
     currentImages.forEach(function (imageUrl) {
         var state = imageStates[imageUrl];
         if (state !== undefined) {
-            console.log(imageUrl);
             var millName = getMillNameFromUrl(imageUrl);
             var unitName = getMillUnitNameFromUrl(imageUrl);
             var addname = getAddFromUrl(imageUrl);
@@ -351,12 +303,11 @@ function proceedWithSubmission() {
                 mill_name: millName,
                 machine_name: machineName,
                 date: date,
-                count_details: [], // Initialize count details array
+                count_details: [],
                 comment: comment,
-                validated: validated // Assign the validated variable to each imageData object
+                validated: validated
             };
 
-            // Update count details
             if (!countDetails[label]) {
                 countDetails[label] = { label: label, tp: 0, fp: 0, nmm: 0 };
             }
@@ -376,9 +327,7 @@ function proceedWithSubmission() {
         }
     });
 
-    // Create count details array from the countDetails object
     var countDetailsArray = Object.values(countDetails);
-    // Add total count to countDetails object
     countDetailsArray.push({
         total: {
             total_tp_count: totalTPCount,
@@ -388,18 +337,16 @@ function proceedWithSubmission() {
     });
 
     submissionData.forEach(function (imageData) {
-        // Assign count details array to imageData object
         imageData.count_details = countDetailsArray;
     });
 
     submissionData.forEach(function (imageData) {
-        console.log(imageData);
         $.ajax({
             type: "POST",
             url: "/move-image",
-            data: JSON.stringify(imageData), // Serialize the object
+            data: JSON.stringify(imageData),
             processData: false,
-            contentType: 'application/json', // Set content type to JSON
+            contentType: 'application/json',
             success: function (response) {
                 console.log(response);
             },
@@ -407,12 +354,10 @@ function proceedWithSubmission() {
                 console.error(xhr.responseText);
             }
         });
-
     });
 
     gosubmitBack();
 }
-
 function getLabelFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
     if (parts.length >= 11) {
@@ -420,8 +365,6 @@ function getLabelFromUrl(imageUrl) {
     }
     return null;
 }
-
-
 function getMillNameFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
     if (parts.length >= 3) {
@@ -445,6 +388,7 @@ function getAddFromUrl(imageUrl) {
     }
     return null;
 }
+
 function getMillMachineNameFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
     if (parts.length >= 6) {
@@ -471,7 +415,7 @@ function getRollNumberFromUrl(imageUrl) {
 
 function getDateFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
-    if (parts.length >= 8) { // Ensure there are enough parts to access the 7th index
+    if (parts.length >= 8) {
         return parts[8];
     }
     return null;
@@ -479,7 +423,7 @@ function getDateFromUrl(imageUrl) {
 
 function getCameraNameFromUrl(imageUrl) {
     var parts = imageUrl.split('/');
-    if (parts.length >= 9) { // Ensure there are enough parts to access the 7th index
+    if (parts.length >= 9) {
         return parts[9];
     }
     return null;
@@ -494,11 +438,11 @@ function showNextImage() {
     if (currentImageIndex < currentImages.length - 1) {
         currentImageIndex++;
         var imageUrl = currentImages[currentImageIndex];
-        var coordinates = currentImageCoordinates[currentImageIndex]; // Get coordinates for the next image
+        var coordinates = currentImageCoordinates[currentImageIndex];
 
         if (coordinates !== undefined) {
             openImageDialog(imageUrl, coordinates);
-            drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the new image
+            drawRectanglePlot(imageUrl, coordinates);
             updateSelectedImageBorder();
         } else {
             console.error("Coordinates for the next image are undefined.");
@@ -510,10 +454,10 @@ function showPreviousImage() {
     if (currentImageIndex > 0) {
         currentImageIndex--;
         var imageUrl = currentImages[currentImageIndex];
-        var coordinates = currentImageCoordinates[currentImageIndex]; // Get coordinates for the previous image
+        var coordinates = currentImageCoordinates[currentImageIndex];
 
         openImageDialog(imageUrl, coordinates);
-        drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the new image
+        drawRectanglePlot(imageUrl, coordinates);
         updateSelectedImageBorder();
     }
 }
@@ -602,13 +546,11 @@ function goBack() {
                 $('#imageDisplay').html('');
                 $('#folderTitle').html('');
                 $('#submitBtn').addClass('d-none');
-
                 $('#startSubtractionBtn').addClass('d-none');
 
                 currentImages = [];
                 imageStates = {};
                 currentImageCoordinates = [];
-
             }
         }
     });
@@ -627,54 +569,32 @@ function gosubmitBack() {
     currentImageCoordinates = [];
 }
 
-
-
-function hideQualityCheckingFrame() {
-    $('#qualityCheckingFrame').addClass('d-none');
-    $('#backButton').removeClass('d-none');
-
-    currentImages.forEach(function (imageUrl) {
-        updateImageBorder(imageUrl, imageStates[imageUrl]);
-    });
-}
-
 function drawRectanglePlot(imageUrl, coordinates) {
-    // console.log("draw ", coordinates);
 
-    // Create a new image element
     var img = new Image();
 
-    // Set the image source to the provided URL
     img.src = imageUrl;
 
-    // Wait for the image to load
     img.onload = function () {
-        // Get the existing canvas element
         var canvas = document.getElementById('imageCanvas');
         var ctx = canvas.getContext('2d');
 
-        // Set canvas dimensions to match image dimensions
         canvas.width = img.width;
         canvas.height = img.height;
 
-        // Draw the image on the canvas
         ctx.drawImage(img, 0, 0);
 
-        // Parse coordinates
         var x1 = coordinates[0][0]; // x coordinate of the first point
         var y1 = coordinates[0][1]; // y coordinate of the first point
         var x2 = coordinates[1][0]; // x coordinate of the second point
         var y2 = coordinates[1][1]; // y coordinate of the second point
 
-        // Calculate rectangle dimensions
         var width = x2 - x1;
         var height = y2 - y1;
 
-        // Draw rectangle on the canvas
         ctx.beginPath();
         ctx.rect(x1, y1, width, height);
 
-        // Set border color to white
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'white';
         ctx.stroke();
@@ -682,27 +602,19 @@ function drawRectanglePlot(imageUrl, coordinates) {
     };
 }
 
-
 function startSubtraction() {
-    // Check if there are images available
     if (currentImageCoordinates.length > 0) {
         confirmationReceived = false;
         $('#editOptions, #editButton, #saveButton').hide();
 
-        // Retrieve the URL and coordinates of the first image
         var firstImageUrl = $('#imageDisplay img:first').attr('src');
         var firstImageCoordinates = currentImageCoordinates[0];
 
-        // Call the openImageDialog function with the URL and coordinates of the first image
         openImageDialog(firstImageUrl, firstImageCoordinates);
     } else {
-        // Handle case where there are no images available
         console.error("No images available for subtraction.");
-        // You can display an error message or take appropriate action here
     }
 }
-
-// =========================================
 
 function showSeparateTpFpNmmImages() {
     var tpImages = [];
@@ -735,7 +647,6 @@ function showSeparateTpFpNmmImages() {
         allImages: { images: currentImages, coordinates: currentImageCoordinates }
     };
 
-    // Send the result to the Flask server
     $.ajax({
         type: "POST",
         url: "/filter_option",
@@ -750,12 +661,10 @@ function showSeparateTpFpNmmImages() {
     });
 }
 
-
 function openImageDialog(imageUrl, coordinates) {
     $('#editOptions, #editButton, #saveButton').hide();
 
     var parts = imageUrl.split('/');
-    // console.log("imageUrl",  imageUrl);
     var label = parts[parts.length - 2];
 
     $('#imageLabel').text("Label: " + label);
@@ -768,7 +677,6 @@ function openImageDialog(imageUrl, coordinates) {
         $('#editOptions, #editButton, #saveButton').show();
 
         var handleResponse = function (response) {
-            // Handle response differently when confirmation is true
             if (editOptionValue === 'false_positive') {
                 currentImages = response.false_positive_image;
                 console.log("currentImages", currentImages);
@@ -791,13 +699,11 @@ function openImageDialog(imageUrl, coordinates) {
             $('#imageCount').text((currentImageIndex + 1) + "/" + currentImages.length);
             updateSelectedImageBorder();
         };
-        // Send the selected option value to the server with the callback function
-        sendOptionValueToServer(editOptionValue, handleResponse);
+
 
     } else {
         $('#editOptions, #editButton, #saveButton').hide();
 
-        // Handle response differently when confirmation is false
         currentImages = $('#imageDisplay').find('img').map(function () {
             return $(this).attr('src');
         }).get();
@@ -808,24 +714,6 @@ function openImageDialog(imageUrl, coordinates) {
         $('#imageCount').text((currentImageIndex + 1) + "/" + currentImages.length);
         updateSelectedImageBorder();
     }
-    //  confirmationReceived = false;
 
 }
 
-function sendOptionValueToServer(optionValue, callback) {
-    $.ajax({
-        type: "POST",
-        url: "/return_option_value",
-        contentType: "application/json",
-        data: JSON.stringify({ option: optionValue }),
-        success: function (response) {
-            // Handle the response from the server
-            console.log("Response from server:", response);
-            // Pass the updated currentImages to the callback function
-            callback(response);
-        },
-        error: function (xhr, status, error) {
-            console.error("Error sending selected option to server:", error);
-        }
-    });
-}

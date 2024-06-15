@@ -1,15 +1,15 @@
 from src.db import Database
 from src.db import Database
 from src.config import ConfigLoader
-import os, json, shutil, datetime
+import os, json, shutil, datetime,logging
 from src.ImageCounter import ImageCounter
 from src.imageproces import ImageProcessor
-
-# from src.databasescheduler import DatabaseScheduler
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, jsonify, render_template, request
+from src.update_status_in_json_file import ImageStatusProcessor
 
 app = Flask(__name__)
-
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 @app.route("/update-records", methods=["POST"])
 def update_records_api():
@@ -22,111 +22,6 @@ def update_records_api():
             return jsonify({"message": "Record updated successfully"})
         else:
             return jsonify({"error": "Failed to update record"}), 500
-
-
-@app.route("/", methods=["GET", "POST"])
-def index():
-    config_loader = ConfigLoader()
-    config = config_loader.config
-    destination_folder = os.path.join("static/", "temp")
-    base_folder = config.get("base_folder")
-    validation_folder = config.get("validation")
-    db_instance = Database()
-    alert_message = ""
-    if request.method == "POST":
-        image_processor = ImageProcessor(base_folder, destination_folder)
-        # image_processor.clear_temp_folder()
-        selected_date = request.form["date"]
-        formatted_selected_date = datetime.datetime.strptime(
-            selected_date, "%Y-%m-%d"
-        ).strftime("%Y-%m-%d")
-
-        validated_folder = (
-            {
-                mill_name: folder_validated
-                for mill_name, folder_validated in db_instance.validate_folder(
-                    formatted_selected_date
-                )
-            }
-            if db_instance.validate_folder(formatted_selected_date) is not None
-            else {}
-        )
-
-        all_images = image_processor.decrypt_and_save_images_from_base_folder(
-            formatted_selected_date
-        )
-
-        if all_images == {}:
-            alert_message = "false"
-            return jsonify({"alert_message": alert_message})
-        else:
-            alert_message = "true"
-
-        return jsonify(
-            {
-                "all_mill_images": all_images,
-                "validation_folder": validation_folder,
-                "alert_message": alert_message,
-                "validated_folder": validated_folder,
-            }
-        )
-
-    return render_template("index.html")
-
-
-@app.route("/move-image", methods=["POST"])
-def move_image():
-    db_instance = Database()
-    config_loader = ConfigLoader()
-    config = config_loader.config
-    validation_folder = config.get("validation")
-    base_folder = config.get("base_folder")
-
-    try:
-        data = request.json
-        source = data["source"]
-        destination = data["destination"]
-        mill_name = data["mill_name"]
-        machine_name = data["machine_name"]
-        date = data["date"]
-        count_details = data["count_details"]  # Extract count_details data
-        comment = data["comment"]  # Extract comment data
-        validated = data["validated"]
-
-        source = base_folder + "/knit-i" + source.replace("/static", "")
-
-        try:
-            if not os.path.exists(source):
-                return "Source file does not exist.", 500
-            os.makedirs(destination, exist_ok=True)
-            _, filename = os.path.split(source)
-            destination_path = os.path.join(destination, filename)
-
-            if os.path.exists(destination_path):
-                os.remove(destination_path)  # Overwrite by removing the existing file
-
-            shutil.move(source, destination_path)
-
-            if os.path.exists(destination_path):
-                db_connection_string = (
-                    "dbname='main' user='postgres' host='localhost' password='soft'"
-                )
- 
-                db_instance.fetch_all_databases_data(date)
-                image_counter = ImageCounter(validation_folder, db_connection_string)
-                image_counter.insert_into_db(
-                    mill_name, machine_name, date, count_details, comment, validated
-                )
-                return "Image moved successfully."
-            else:
-                return "File does not exist in destination.", 500
-        except Exception as e:
-            print("Error move:", e)
-            return str(e), 500
-
-    except Exception as e:
-        print("Error:", e)
-        return str(e), 500
 
 
 @app.route("/dashboard", methods=["GET", "POST"])
@@ -206,7 +101,119 @@ def dashboard():
         return render_template("dashboard.html")
 
 
+@app.route("/", methods=["GET", "POST"])
+def index():
+    config_loader = ConfigLoader()
+    config = config_loader.config
+    destination_folder = os.path.join("static/", "temp")
+    base_folder = config.get("base_folder")
+    validation_folder = config.get("validation")
+    db_instance = Database()
+    alert_message = ""
+    if request.method == "POST":
+        image_processor = ImageProcessor(base_folder, destination_folder)
+        # image_processor.clear_temp_folder()
+        selected_date = request.form["date"]
+        formatted_selected_date = datetime.datetime.strptime(
+            selected_date, "%Y-%m-%d"
+        ).strftime("%Y-%m-%d")
+
+        validated_folder = (
+            {
+                mill_name: folder_validated
+                for mill_name, folder_validated in db_instance.validate_folder(
+                    formatted_selected_date
+                )
+            }
+            if db_instance.validate_folder(formatted_selected_date) is not None
+            else {}
+        )
+
+        all_images = image_processor.decrypt_and_save_images_from_base_folder(
+            formatted_selected_date
+        )
+
+        if all_images == {}:
+            alert_message = "false"
+            return jsonify({"alert_message": alert_message})
+        else:
+            alert_message = "true"
+
+        return jsonify(
+            {
+                "all_mill_images": all_images,
+                "validation_folder": validation_folder,
+                "alert_message": alert_message,
+                "validated_folder": validated_folder,
+            }
+        )
+
+    return render_template("index.html")
+
+
+@app.route("/move-image", methods=["POST"])
+def move_image():
+    db_instance = Database()
+    config_loader = ConfigLoader()
+    config = config_loader.config
+    validation_folder = config.get("validation")
+    base_folder = config.get("base_folder")
+
+    try:
+        data = request.json
+        source = data["source"]
+        destination = data["destination"]
+        mill_name = data["mill_name"]
+        machine_name = data["machine_name"]
+        date = data["date"]
+        count_details = data["count_details"]  # Extract count_details data
+        comment = data["comment"]  # Extract comment data
+        validated = data["validated"]
+
+        source = base_folder + "knit-i" + source.replace("/static", "")
+        update_key_path = "/".join(
+            source.replace("/temp", "").split("/")[:-2]
+            + source.replace("/temp", "").split("/")[-1:]
+        )
+
+        status = destination.split("/")[-1]  # Get the last part of the path
+        image_status_processor = ImageStatusProcessor()
+
+        image_status_processor.process_image_status(update_key_path, status)
+        try:
+            if not os.path.exists(source):
+                return "Source file does not exist.", 500
+            os.makedirs(destination, exist_ok=True)
+            _, filename = os.path.split(source)
+            destination_path = os.path.join(destination, filename)
+
+            if os.path.exists(destination_path):
+                os.remove(destination_path)  # Overwrite by removing the existing file
+
+            shutil.move(source, destination_path)
+
+            if os.path.exists(destination_path):
+                db_connection_string = (
+                    "dbname='main' user='postgres' host='localhost' password='soft'"
+                )
+
+                db_instance.fetch_all_databases_data(date)
+                image_counter = ImageCounter(validation_folder, db_connection_string)
+                image_counter.insert_into_db(
+                    mill_name, machine_name, date, count_details, comment, validated
+                )
+
+                return "Image moved successfully."
+            else:
+                return "File does not exist in destination.", 500
+        except Exception as e:
+            print("Error move:", e)
+            return str(e), 500
+
+    except Exception as e:
+        print("Error:", e)
+        return str(e), 500
+
+
 if __name__ == "__main__":
-    # database_scheduler = DatabaseScheduler()
-    # database_scheduler.run_scheduler()
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=False, host="0.0.0.0", port=5000)

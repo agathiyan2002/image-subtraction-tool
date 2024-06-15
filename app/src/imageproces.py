@@ -100,6 +100,17 @@ class ImageProcessor:
 
                         coordinates = json_data["shapes"][0].get("points", [])
 
+                        # Prepare the dictionary to store image data
+                        image_info = {
+                            "label": json_data["shapes"][0]["label"],
+                            "image_path": image_path,
+                            "coordinates": coordinates,
+                        }
+
+                        # Add status to the dictionary if it exists in the JSON
+                        if "status" in json_data:
+                            image_info["status"] = json_data["status"]
+
                         # Store image data in the nested dictionary
                         if mill_name not in images_dict:
                             images_dict[mill_name] = {}
@@ -109,15 +120,12 @@ class ImageProcessor:
                             images_dict[mill_name][roll_number][file_date] = []
 
                         images_dict[mill_name][roll_number][file_date].append(
-                            {
-                                "label": json_data["shapes"][0]["label"],
-                                "image_path": image_path,
-                                "coordinates": coordinates,
-                            }
+                            image_info
                         )
                     except json.JSONDecodeError as e:
                         # print(f"JSON decode error for file {json_file_path}: {e}")
                         pass
                     except Exception as e:
                         print(f"Error processing file {json_file_path}: {e}")
+  
         return images_dict

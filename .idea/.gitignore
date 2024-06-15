@@ -1,5 +1,4 @@
- 
- # Ignore the app/static/temp/ directory
+# Ignore the app/static/temp/ directory
 app/static/temp/
 .idea/
 __pycache__
