@@ -1,18 +1,18 @@
  
+
  # remove old container
 sudo docker rm -f knitting-imagesubtraction 
-
 # build new container
 sudo docker build -t image_subtraction:latest .
 
 # run container
 sudo docker run -e --restart=always -it --name knitting-imagesubtraction \
     --network=host \
-    -e "DB_PORT=5432" -e "DB_USER=postgres" -e "DB_PASS=soft" -e "DB_HOST=127.0.0.1" \
+    -e "DB_PORT=5432" -e "DB_USER=postgres" -e "DB_PASS=55555" -e "DB_HOST=127.0.0.1" \
     --privileged \
     -v /home:/home \
-    -v /home/alan/projects/:/app/projects \
-    -v /home/alan/cloud/Database:/app/Database \
-    -v /home/alan/validation/:/app/static/validation \
-    -v /home/alan/projects/knit-i/temp/:/app/static/temp \
+    -v /home/kniti/projects/:/app/projects \
+    -v /home/kniti/cloud/Database:/app/Database \
+    -v /home/kniti/validation/:/app/static/validation \
+    -v /home/kniti/projects/knit-i/temp/:/app/static/temp \
     image_subtraction:latest
