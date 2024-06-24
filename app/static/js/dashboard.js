@@ -18,10 +18,17 @@ function fetchMillDetails() {
             date: selectedDate
         },
         success: function (response) {
+
             var tableBody = document.getElementById('dashboardTable').getElementsByTagName('tbody')[0];
             tableBody.innerHTML = '';
 
             copyvalue = [];
+
+            // Sort response based on key 1 in ascending order
+            response.sort(function (a, b) {
+                return a[1] - b[1];
+            });
+
             response.forEach(function (record, index) {
                 copyvalue.push(record);
                 var row = document.createElement('tr');
@@ -49,6 +56,7 @@ function fetchMillDetails() {
                     var cell = document.createElement('td');
                     if (record.hasOwnProperty(key)) {
                         var value = record[key];
+
                         if (value === null) {
                             cell.textContent = '';
                         } else if (key === 2) {
@@ -78,6 +86,7 @@ function fetchMillDetails() {
         }
     });
 }
+
 
 function initializeDashboard() {
     var yesterday = new Date();
@@ -215,6 +224,6 @@ function generateSubTable(subTableData) {
         subTable += '</tr>';
     });
     subTable += '</tbody></table>';
-    console.log(subTable);
+     
     return subTable;
 }

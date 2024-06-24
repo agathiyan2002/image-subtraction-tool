@@ -1,15 +1,16 @@
 from src.db import Database
 from src.db import Database
 from src.config import ConfigLoader
-import os, json, shutil, datetime,logging
+import os, json, shutil, datetime, logging
 from src.ImageCounter import ImageCounter
 from src.imageproces import ImageProcessor
 from flask import Flask, jsonify, render_template, request
 from src.update_status_in_json_file import ImageStatusProcessor
 
 app = Flask(__name__)
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
+# log = logging.getLogger('werkzeug')
+# log.setLevel(logging.ERROR)
+
 
 @app.route("/update-records", methods=["POST"])
 def update_records_api():
@@ -194,7 +195,7 @@ def move_image():
 
             if os.path.exists(destination_path):
                 db_connection_string = (
-                    "dbname='main' user='postgres' host='localhost' password='soft'"
+                    "dbname='main' user='postgres' host='localhost' password='55555'"
                 )
 
                 db_instance.fetch_all_databases_data(date)
@@ -216,4 +217,4 @@ def move_image():
 
 
 if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)

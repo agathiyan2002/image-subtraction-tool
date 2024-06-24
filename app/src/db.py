@@ -61,14 +61,14 @@ class Database:
     def __init__(self):
         self.source_db_config = {
             "user": "postgres",
-            "password": "soft",
+            "password": "55555",
             "host": "localhost",
             "port": "5432",
             "database": "postgres",
         }
         self.destination_db_config = {
             "user": "postgres",
-            "password": "soft",
+            "password": "55555",
             "host": "localhost",
             "port": "5432",
             "database": "main",
@@ -78,7 +78,7 @@ class Database:
     def fetch_all_databases_data(self, selected_date):
         try:
 
-            query = "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner');"
+            query = "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'main','funner','central_simulation');"
             data = self.execute.select(self.source_db_config, query, parameters=None)
 
             database_names = [row[0] for row in data]

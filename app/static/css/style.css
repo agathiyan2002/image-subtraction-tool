@@ -192,6 +192,7 @@ header h3 {
 
 
 #backButton,
+#backToMillButton,
 #submitBtn,
 #startSubtractionBtn {
     padding: 10px;
@@ -208,7 +209,8 @@ header h3 {
     color: white;
 }
 
-#backButton {
+#backButton,
+#backToMillButton {
     background-color: transparent;
     /* Transparent background */
     border-color: transparent;
@@ -217,7 +219,8 @@ header h3 {
     /* Button text color */
 }
 
-#backButton:hover {
+#backButton:hover,
+#backToMillButton:hover {
     color: blue;
     /* Change text color on hover */
 }
@@ -235,23 +238,29 @@ header h3 {
 
 .image-info {
     display: flex;
-    justify-content: space-between; /* Aligns items horizontally */
+    justify-content: space-between;
+    /* Aligns items horizontally */
 }
 
 .info-item-container {
-    display: flex; /* Display items horizontally */
+    display: flex;
+    /* Display items horizontally */
 }
 
 .info-item {
-    margin-right: 10px; /* Add spacing between label and status */
+    margin-right: 10px;
+    /* Add spacing between label and status */
 }
 
 .info-right {
-    display: flex; /* Display items horizontally */
-    align-items: center; /* Vertically center items */
+    display: flex;
+    /* Display items horizontally */
+    align-items: center;
+    /* Vertically center items */
 }
 
 .info-right select,
 .info-right button {
-    margin-left: 10px; /* Add spacing between select and buttons */
+    margin-left: 10px;
+    /* Add spacing between select and buttons */
 }

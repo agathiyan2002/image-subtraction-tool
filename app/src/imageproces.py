@@ -58,15 +58,16 @@ class ImageProcessor:
                                 relative_path_parts.remove("knit-i")
                             relative_path = os.path.join(*relative_path_parts)
 
-                        # Extracting mill name, roll number, and date from the path
+                        # Extracting mill name, machine number, roll number, and date from the path
                         parts = relative_path.split(os.sep)
-                        if len(parts) < 3:
+                        if len(parts) < 4:
                             print(
                                 f"Skipping file with insufficient path information: {json_file_path}"
                             )
                             continue
 
                         mill_name = parts[0]
+                        machine_number = parts[3]
                         roll_number = parts[4]
                         file_date = parts[5]
 
@@ -88,15 +89,12 @@ class ImageProcessor:
                         if not os.path.exists(image_path):
                             with open(image_path, "wb") as img_file:
                                 img_file.write(image_data)
-                            if os.path.exists(image_path):
-                                pass
-                            else:
+                            if not os.path.exists(image_path):
                                 print("Failed to store the image.")
                         else:
-                            pass
-                        # Additional condition if no image is available
-                        if not os.path.exists(image_path):
-                            print("No image available.")
+                            # Additional condition if no image is available
+                            if not os.path.exists(image_path):
+                                print("No image available.")
 
                         coordinates = json_data["shapes"][0].get("points", [])
 
@@ -114,18 +112,25 @@ class ImageProcessor:
                         # Store image data in the nested dictionary
                         if mill_name not in images_dict:
                             images_dict[mill_name] = {}
-                        if roll_number not in images_dict[mill_name]:
-                            images_dict[mill_name][roll_number] = {}
-                        if file_date not in images_dict[mill_name][roll_number]:
-                            images_dict[mill_name][roll_number][file_date] = []
+                        if machine_number not in images_dict[mill_name]:
+                            images_dict[mill_name][machine_number] = {}
+                        if roll_number not in images_dict[mill_name][machine_number]:
+                            images_dict[mill_name][machine_number][roll_number] = {}
+                        if (
+                            file_date
+                            not in images_dict[mill_name][machine_number][roll_number]
+                        ):
+                            images_dict[mill_name][machine_number][roll_number][
+                                file_date
+                            ] = []
 
-                        images_dict[mill_name][roll_number][file_date].append(
-                            image_info
-                        )
+                        images_dict[mill_name][machine_number][roll_number][
+                            file_date
+                        ].append(image_info)
                     except json.JSONDecodeError as e:
                         # print(f"JSON decode error for file {json_file_path}: {e}")
                         pass
                     except Exception as e:
                         print(f"Error processing file {json_file_path}: {e}")
-  
+
         return images_dict

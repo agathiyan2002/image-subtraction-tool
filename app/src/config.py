@@ -8,9 +8,9 @@ class ConfigLoader:
     def load_config(self):
         try:
             config_file={
-            "base_folder": "/home/alan/projects/",
-            "database": "/home/alan/cloud/Database",
-            "validation": "/home/alan/validation/"
+            "base_folder": "/home/kniti/projects/",
+            "database": "/home/kniti/cloud/Database",
+            "validation": "/home/kniti/validation/"
             }
 
             return config_file

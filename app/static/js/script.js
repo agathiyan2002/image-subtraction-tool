@@ -91,6 +91,8 @@ function showErrorDialog(message) {
     });
 }
 
+var selectedMill = null;
+
 function updateFolderList(millFoldersWithRollIDs) {
     var folderList = "<div class='folder-grid'>";
     var allEmpty = true;
@@ -104,7 +106,7 @@ function updateFolderList(millFoldersWithRollIDs) {
             if (millData && Object.keys(millData).length > 0) {
                 allEmpty = false;
 
-                folderList += "<div class='folder-item' onclick='showImages(\"" + millName + "\", " + JSON.stringify(millData) + ")'>" +
+                folderList += "<div class='folder-item' onclick='showMachines(\"" + millName + "\", " + JSON.stringify(millData) + ")'>" +
                     "<i class='fas fa-folder folder-icon fa-5x'></i>" +
                     "<div class='folder-details'>" +
                     "<button class='btn btn-link folder-btn'>" + millName + "</button>" + validateIcon +
@@ -127,6 +129,33 @@ function updateFolderList(millFoldersWithRollIDs) {
     $('#folderNotFound').hide();
     $('#imageDisplay').html('');
     $('#folderTitle').html('');
+    $('#backButton').addClass('d-none'); // Hide the back button for images
+    $('#backToMillButton').addClass('d-none'); // Hide the back button for machine folders
+}
+
+function showMachines(millName, millData) {
+    selectedMill = millName;
+    var folderList = "<div class='row'><button id='backToMillButton' class='btn btn-outline-secondary d-none' onclick='goBackToMillFolders()'>" +
+        "<i class='fas fa-arrow-left'></i> Back</button></div>";
+
+    folderList += "<div class='folder-grid'>";
+
+    for (var machineName in millData) {
+        if (millData.hasOwnProperty(machineName)) {
+            folderList += "<div class='folder-item' onclick='showImages(\"" + millName + "\", \"" + machineName + "\", " + JSON.stringify(millData[machineName]) + ")'>" +
+                "<i class='fas fa-folder folder-icon fa-5x'></i>" +
+                "<div class='folder-details'>" +
+                "<button class='btn btn-link folder-btn'>" + machineName + "</button>" +
+                "</div></div>";
+        }
+    }
+
+    folderList += "</div>";
+
+    $('#millFolders').html(folderList);
+    $('#folderTitle').html('Machines in ' + millName);
+    $('#backToMillButton').removeClass('d-none'); // Show the back button for machine folders
+    $('#backButton').addClass('d-none'); // Hide the back button for images
 }
 
 function showMissingDateFoldersDialog(missing_date_folders) {
@@ -145,20 +174,18 @@ function showMissingDateFoldersDialog(missing_date_folders) {
     });
 }
 
-function showImages(millFolder, imageData) {
+function showImages(millName, machineName, imageData) {
     var imageList = "<div class='image-container'>";
 
     for (var rollNumber in imageData) {
         for (var date in imageData[rollNumber]) {
-
             imageData[rollNumber][date].forEach(function (imageDataItem) {
                 var imageSrc = "/static" + imageDataItem.image_path.replace(/\\/g, "/").slice(imageDataItem.image_path.indexOf('/temp'));
                 var coordinates = imageDataItem.coordinates;
 
                 currentImageCoordinates.push(coordinates);
-           
+
                 imageStates[imageSrc] = imageDataItem.status;
-          
 
                 var borderColor = "";
                 if (imageDataItem.status === "tp") {
@@ -183,12 +210,21 @@ function showImages(millFolder, imageData) {
     confirmationReceived = false;
 
     $('#imageDisplay').html(imageList);
-    $('#folderTitle').html('All Images in ' + millFolder);
-
+    $('#folderTitle').html('Images in ' + machineName + ' (' + millName + ')');
     $('#millFolders').hide();
-    $('#backButton').removeClass('d-none');
+    $('#backButton').removeClass('d-none'); // Show the back button for images
+    $('#backToMillButton').addClass('d-none'); // Hide the back button for machine folders
     $('#submitBtn').removeClass('d-none');
     $('#startSubtractionBtn').removeClass('d-none');
+}
+
+function goBackToMillFolders() {
+    updateFolderList(millFoldersWithRollIDs);
+}
+
+// Function to go back from images to machine folders
+function goBack() {
+    showMachines(selectedMill, millFoldersWithRollIDs[selectedMill]);
 }
 
 function goBack() {
@@ -547,6 +583,7 @@ function goBack() {
                 $('#folderTitle').html('');
                 $('#submitBtn').addClass('d-none');
                 $('#startSubtractionBtn').addClass('d-none');
+                $('#backToMillButton').removeClass('d-none'); // Show the back button for machine folders
 
                 currentImages = [];
                 imageStates = {};
@@ -563,6 +600,7 @@ function gosubmitBack() {
     $('#folderTitle').html('');
     $('#submitBtn').addClass('d-none');
     $('#startSubtractionBtn').addClass('d-none');
+    $('#backToMillButton').removeClass('d-none'); // Show the back button for machine folders
 
     currentImages = [];
     imageStates = {};
