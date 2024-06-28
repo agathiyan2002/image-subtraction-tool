@@ -91,15 +91,22 @@ class ImageCounter:
         return final_results
 
     def insert_into_db(
-        self, mill_name, machine_name, date, count_details, comment, validated
+        self,
+        mill_name,
+        machine_name,
+        date,
+        count_details,
+        comment,
+        validateionMachineFolders,
     ):
-   
+
         try:
             conn = psycopg2.connect(self.db_connection_string)
             cursor = conn.cursor()
 
             # Convert count_details dictionary to JSON string
             count_details_json = json.dumps(count_details)
+           
 
             cursor.execute(
                 "SELECT * FROM mill_details WHERE date = %s AND mill_name = %s AND machine_name=%s",
@@ -114,7 +121,7 @@ class ImageCounter:
                     (
                         count_details_json,  # Store count_details as JSON string
                         comment,
-                        validated,
+                        validateionMachineFolders,
                         date,
                         mill_name,
                         machine_name,
@@ -130,7 +137,7 @@ class ImageCounter:
                         date,
                         count_details_json,  # Store count_details as JSON string
                         comment,
-                        validated,
+                        validateionMachineFolders,
                     ),
                 )
 

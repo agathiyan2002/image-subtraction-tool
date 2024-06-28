@@ -106,7 +106,7 @@ def dashboard():
 def index():
     config_loader = ConfigLoader()
     config = config_loader.config
-    destination_folder = os.path.join("static/", "temp")
+    destination_folder = os.path.join("app/static/", "temp")
     base_folder = config.get("base_folder")
     validation_folder = config.get("validation")
     db_instance = Database()
@@ -119,16 +119,18 @@ def index():
             selected_date, "%Y-%m-%d"
         ).strftime("%Y-%m-%d")
 
-        validated_folder = (
-            {
-                mill_name: folder_validated
-                for mill_name, folder_validated in db_instance.validate_folder(
-                    formatted_selected_date
-                )
-            }
-            if db_instance.validate_folder(formatted_selected_date) is not None
-            else {}
-        )
+        validate_folder_result = db_instance.validate_folder(formatted_selected_date)
+        validated_folder = {}
+
+        # Iterate over validate_folder_result to populate validated_folder
+        for mill_name, folder_validated, machine_name in validate_folder_result:
+            if mill_name not in validated_folder:
+                validated_folder[mill_name] = {}
+            validated_folder[mill_name][machine_name] = (
+                "validated" if folder_validated == "validated" else "notvalidated"
+            )
+
+      
 
         all_images = image_processor.decrypt_and_save_images_from_base_folder(
             formatted_selected_date
@@ -139,7 +141,9 @@ def index():
             return jsonify({"alert_message": alert_message})
         else:
             alert_message = "true"
-
+        print("++++++++++")
+        print(validated_folder)
+        print("++++++++++++++")
         return jsonify(
             {
                 "all_mill_images": all_images,
@@ -182,33 +186,25 @@ def move_image():
 
         image_status_processor.process_image_status(update_key_path, status)
         try:
-            if not os.path.exists(source):
-                return "Source file does not exist.", 500
-            os.makedirs(destination, exist_ok=True)
-            _, filename = os.path.split(source)
-            destination_path = os.path.join(destination, filename)
 
-            if os.path.exists(destination_path):
-                os.remove(destination_path)  # Overwrite by removing the existing file
+            db_connection_string = (
+                "dbname='main' user='postgres' host='localhost' password='55555'"
+            )
 
-            shutil.move(source, destination_path)
+            db_instance.fetch_all_databases_data(date)
+            image_counter = ImageCounter(validation_folder, db_connection_string)
+            image_counter.insert_into_db(
+                mill_name,
+                machine_name,
+                date,
+                count_details,
+                comment,
+                validated,
+            )
+            return "Image move request processed successfully."
 
-            if os.path.exists(destination_path):
-                db_connection_string = (
-                    "dbname='main' user='postgres' host='localhost' password='55555'"
-                )
-
-                db_instance.fetch_all_databases_data(date)
-                image_counter = ImageCounter(validation_folder, db_connection_string)
-                image_counter.insert_into_db(
-                    mill_name, machine_name, date, count_details, comment, validated
-                )
-
-                return "Image moved successfully."
-            else:
-                return "File does not exist in destination.", 500
         except Exception as e:
-            print("Error move:", e)
+            print("Error  :", e)
             return str(e), 500
 
     except Exception as e:

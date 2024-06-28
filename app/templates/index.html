@@ -48,7 +48,7 @@
 
     <div id="qualityCheckingFrame" class="d-none">
         <div class="d-flex justify-content-between">
-            <!-- Back button -->
+
             <button id="backButtonQuaty" class="btn btn-outline-secondary back-button"
                 onclick="hideQualityCheckingFrame()">
                 <i class="fas fa-arrow-left"></i> Back
@@ -80,28 +80,28 @@
 
 
     <div id="millFolders"></div>
-
     <div class="row">
         <div class="col">
             <button id="backButton" class="btn btn-outline-secondary d-none" onclick="goBack()">
                 <i class="fas fa-arrow-left"></i> <!-- Font Awesome back icon -->
                 Back <!-- Text for the button -->
             </button>
-
         </div>
 
+        <div class="col text-center">
+            <h3 id="machineNameHeading"> </h3>
+        </div>
 
         <!-- Start of Submit and Start Subtraction buttons -->
         <div class="col text-right">
             <div class="role">
-
                 <button id="startSubtractionBtn" class="btn btn-secondary d-none"
                     onclick="startSubtraction()">Start</button>
-
                 <button id="submitBtn" class="btn btn-primary d-none" onclick="submitImages()">Submit</button>
             </div>
         </div>
     </div>
+
 
 
 
@@ -120,10 +120,10 @@
                 </div>
                 <div class="modal-body">
                     <div class="image-info">
-                        <div class="info-item-container">
+                        <!-- <div class="info-item-container">
                             <p id="imageLabel" class="info-item"></p>
                             <p id="status" class="info-item"></p>
-                        </div>
+                        </div> -->
                         <div class="info-right">
                             <select id="editOptions" class="form-control">
                                 <option value="all_images" selected>All</option>
@@ -143,6 +143,13 @@
                     <canvas id="imageCanvas" frameborder="0" style="width:100%;height:700px;"></canvas>
                     <p id="imageCount"></p>
                     <ul class="shortcut-keys">
+
+                        <div class="info-item-container">
+                            <p id="imageLabel" class="info-item"></p>
+                            <p id="rollIdValue" class="info-item"></p>
+                            <p id="status" class="info-item"></p>
+
+                        </div>
                         <li>- Next Image: D</li>
                         <li>- Previous Image: A</li>
                         <li>- True Positive: Right Arrow</li>

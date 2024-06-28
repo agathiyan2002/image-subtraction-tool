@@ -174,7 +174,7 @@ header h3 {
     justify-content: flex-end;
     gap: 2px;
     /* 2px space between Submit and Start Subtraction buttons */
-    padding: 30px;
+    padding: 1  0px;
     /* Add padding around the contents */
 }
 

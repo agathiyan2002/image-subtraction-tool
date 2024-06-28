@@ -1,5 +1,6 @@
 import json, os, psycopg2, logging
- 
+
+
 class Execute:
     def select(self, db_config, query, parameters=None):
         connection = None
@@ -56,6 +57,7 @@ class Execute:
             if connection:
                 cursor.close()
                 connection.close()
+
 
 class Database:
     def __init__(self):
@@ -153,7 +155,6 @@ class Database:
             )
         except psycopg2.Error as e:
             print(f"Error fetching data from database {db_name}:", e)
- 
 
     def map_keys_to_names(counts, subkeyMap):
         mapped_counts = {}
@@ -284,8 +285,8 @@ class Database:
             print("Error inserting or updating data:", e)
 
     def fetch_records_by_date(self, selected_date):
-            try:
-                query = """
+        try:
+            query = """
                     SELECT mill_name, machine_name, avg_rpm, guage, gsm, loop_length, uptime, no_of_revolutions,
                     mdd_defect_count, add_defect_count, count_details, comments, machine_brand, machine_dia, model_name,
                     feeder_type, fabric_material, machine_rolling_type, status, internet_status, total_alarms,
@@ -293,13 +294,15 @@ class Database:
                     FROM mill_details
                     WHERE date = %s
                 """
-                records = self.execute.select(self.destination_db_config, query, (selected_date,))
-                 
-                return records
-            except psycopg2.Error as e:
-                print("Error fetching records:", e)
-                return None
-  
+            records = self.execute.select(
+                self.destination_db_config, query, (selected_date,)
+            )
+
+            return records
+        except psycopg2.Error as e:
+            print("Error fetching records:", e)
+            return None
+
     def update_records(self, updated_record):
         try:
             print(updated_record)
@@ -432,9 +435,11 @@ class Database:
 
     def validate_folder(self, selected_date):
         try:
-            query = "SELECT mill_name, folder_validated FROM mill_details WHERE date = %s"
-            folder_data = self.execute.select(self.destination_db_config, query, (selected_date,))
-        
+            query = "SELECT mill_name, folder_validated,machine_name FROM mill_details WHERE date = %s"
+            folder_data = self.execute.select(
+                self.destination_db_config, query, (selected_date,)
+            )
+          
             return folder_data
         except psycopg2.Error as e:
             print("Error fetching folder validation data:", e)

@@ -4,7 +4,7 @@ var alert_message = "";
 var currentImageIndex = 0;
 var currentImages = [];
 var error_databases = [];
-var validated_folder = [];
+
 var imageStates = {};
 var dateSent = false;
 var currentImageUrl = "";
@@ -14,6 +14,19 @@ var tpImages = [];
 var fpImages = [];
 var nmmImages = [];
 var confirmationReceived = false;
+var selectedMill = null;
+var sortImages = [];
+var unmarked = false;
+var unMarkedimagestates = {}
+var unmarkedmillName = "";
+var unmarkedMachineName = "";
+var validateionMachineFolders = {};
+var allMachinenames = [];
+var mill = "";
+var milldas = {};
+let validated = {};
+var mfwroll = [];
+var atervalid = {};
 $(document).ready(function () {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
@@ -43,6 +56,7 @@ $(document).ready(function () {
 });
 
 function showMillFolders() {
+    validateionMachineFolders = {};
     currentImageCoordinates = [];
 
     $('#folderNotFound').hide();
@@ -62,13 +76,14 @@ function showMillFolders() {
             millFoldersWithRollIDs = response["all_mill_images"];
             validation_folder = response["validation_folder"];
             alert_message = response["alert_message"];
-            validated_folder = response["validated_folder"];
+            var validated_folder = response["validated_folder"];
+
             if (alert_message == "false") {
                 showErrorDialog("No records found for the selected date.");
                 return;
             }
 
-            updateFolderList(millFoldersWithRollIDs);
+            updateFolderList(millFoldersWithRollIDs, validated_folder);
         },
         error: function (xhr, status, error) {
             console.error(xhr.responseText);
@@ -91,15 +106,30 @@ function showErrorDialog(message) {
     });
 }
 
-var selectedMill = null;
+function updateFolderList(millFoldersWithRollIDs, validated_folder) {
 
-function updateFolderList(millFoldersWithRollIDs) {
+    atervalid = validated_folder;
     var folderList = "<div class='folder-grid'>";
     var allEmpty = true;
 
     for (var millName in millFoldersWithRollIDs) {
-        var validated = validated_folder[millName];
-        var validateIcon = (validated === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
+
+        let valid = "notvalidated";
+        let validateIcon = "";
+
+        if (validated_folder && validated_folder.hasOwnProperty(millName)) {
+            try {
+                validated = validateionMachineFolders;
+                console.log("validated", validated);
+                validated = validated_folder[millName];
+
+                validateionMachineFolders = validated;
+                valid = Object.values(validated).every(v => v === "validated") ? "validated" : "notvalidated";
+                validateIcon = (valid === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
+            } catch (e) {
+                console.error("Error parsing JSON for millName:", millName, e);
+            }
+        }
 
         if (millFoldersWithRollIDs.hasOwnProperty(millName)) {
             var millData = millFoldersWithRollIDs[millName];
@@ -134,18 +164,38 @@ function updateFolderList(millFoldersWithRollIDs) {
 }
 
 function showMachines(millName, millData) {
+    mill = millName;
+    milldas = millData;
+
     selectedMill = millName;
+
     var folderList = "<div class='row'><button id='backToMillButton' class='btn btn-outline-secondary d-none' onclick='goBackToMillFolders()'>" +
         "<i class='fas fa-arrow-left'></i> Back</button></div>";
 
     folderList += "<div class='folder-grid'>";
 
     for (var machineName in millData) {
+        allMachinenames.push(machineName.toString()); // Ensure machine names are strings
+
         if (millData.hasOwnProperty(machineName)) {
+
+            for (let machineName in validateionMachineFolders) {
+                if (validateionMachineFolders.hasOwnProperty(machineName)) {
+                    let status = validateionMachineFolders[machineName];
+
+                }
+            }
+
+            var validationStatus = validateionMachineFolders[machineName.toString()];
+
+
+            var validateIcon = (validationStatus === 'validated') ? "<i class='fas fa-check-circle validated-icon'></i>" : "";
+
             folderList += "<div class='folder-item' onclick='showImages(\"" + millName + "\", \"" + machineName + "\", " + JSON.stringify(millData[machineName]) + ")'>" +
                 "<i class='fas fa-folder folder-icon fa-5x'></i>" +
                 "<div class='folder-details'>" +
                 "<button class='btn btn-link folder-btn'>" + machineName + "</button>" +
+                validateIcon + // Add the validation icon here
                 "</div></div>";
         }
     }
@@ -158,50 +208,65 @@ function showMachines(millName, millData) {
     $('#backButton').addClass('d-none'); // Hide the back button for images
 }
 
-function showMissingDateFoldersDialog(missing_date_folders) {
-    var dialogContent = "<div style='height: 300px; overflow-y: auto;'>";
-    dialogContent += "<p>Missing Date Folders:</p><ul>";
-    missing_date_folders.forEach(function (folder) {
-        dialogContent += "<li>" + folder + "</li>";
-    });
-    dialogContent += "</ul></div>";
-
-    bootbox.alert({
-        title: "Missing Date Folders",
-        message: dialogContent,
-        backdrop: true,
-        className: 'custom-dialog'
-    });
-}
-
 function showImages(millName, machineName, imageData) {
+
+    unmarkedmillName = millName;
+
+    unmarkedMachineName = machineName;
+    console.log("unmarkedMachineName", unmarkedMachineName);
     var imageList = "<div class='image-container'>";
 
-    for (var rollNumber in imageData) {
-        for (var date in imageData[rollNumber]) {
-            imageData[rollNumber][date].forEach(function (imageDataItem) {
-                var imageSrc = "/static" + imageDataItem.image_path.replace(/\\/g, "/").slice(imageDataItem.image_path.indexOf('/temp'));
-                var coordinates = imageDataItem.coordinates;
+    if (!unmarked) {
+        console.log("///");
+        for (var rollNumber in imageData) {
+            for (var date in imageData[rollNumber]) {
+                imageData[rollNumber][date].forEach(function (imageDataItem) {
+                    var imageSrc = "/static" + imageDataItem.image_path.replace(/\\/g, "/").slice(imageDataItem.image_path.indexOf('/temp'));
+                    var coordinates = imageDataItem.coordinates;
+                    sortImages.push({ imagepath: imageSrc, coordinates: coordinates });
 
-                currentImageCoordinates.push(coordinates);
+                    currentImageCoordinates.push(coordinates);
 
-                imageStates[imageSrc] = imageDataItem.status;
+                    imageStates[imageSrc] = imageDataItem.status;
 
-                var borderColor = "";
-                if (imageDataItem.status === "tp") {
-                    borderColor = "green"; // True positive
-                } else if (imageDataItem.status === "fp") {
-                    borderColor = "red"; // False positive
-                } else if (imageDataItem.status === "nmm") {
-                    borderColor = "blue"; // Not manually marked
-                } else {
-                    borderColor = "black"; // Default to black if status is unknown
-                }
-                var borderStyle = "style='border: 2px solid " + borderColor + ";'";
+                    var borderColor = "";
+                    if (imageDataItem.status === "tp") {
+                        borderColor = "green"; // True positive
+                    } else if (imageDataItem.status === "fp") {
+                        borderColor = "red"; // False positive
+                    } else if (imageDataItem.status === "nmm") {
+                        borderColor = "blue"; // Not manually marked
+                    } else {
+                        borderColor = "black"; // Default to black if status is unknown
+                    }
+                    var borderStyle = "style='border: 2px solid " + borderColor + ";'";
 
-                imageList += "<img src='" + imageSrc + "' alt='Image' onclick='openImageDialog(\"" + imageSrc + "\", " + JSON.stringify(coordinates) + ")' " + borderStyle + ">";
-            });
+                    imageList += "<img src='" + imageSrc + "' alt='Image' onclick='openImageDialog(\"" + imageSrc + "\", " + JSON.stringify(coordinates) + ")' " + borderStyle + ">";
+                });
+            }
         }
+    } else {
+
+        console.log("$$$$$");
+        imageData.forEach(function (imageDataItem) {
+            var imageSrc = imageDataItem.imagepath;
+            var coordinates = imageDataItem.coordinates;
+
+            var borderColor = "";
+            if (unMarkedimagestates[imageSrc] === "tp") {
+                borderColor = "green"; // True positive
+            } else if (unMarkedimagestates[imageSrc] === "fp") {
+                borderColor = "red"; // False positive
+            } else if (unMarkedimagestates[imageSrc] === "nmm") {
+                borderColor = "blue"; // Not manually marked
+            } else {
+                borderColor = "black"; // Default to black if status is unknown
+            }
+            var borderStyle = "style='border: 2px solid " + borderColor + ";'";
+
+            imageList += "<img src='" + imageSrc + "' alt='Image' onclick='openImageDialog(\"" + imageSrc + "\", " + JSON.stringify(coordinates) + ")' " + borderStyle + ">";
+            unmarked = false;
+        });
     }
 
     imageList += "</div>";
@@ -216,10 +281,14 @@ function showImages(millName, machineName, imageData) {
     $('#backToMillButton').addClass('d-none'); // Hide the back button for machine folders
     $('#submitBtn').removeClass('d-none');
     $('#startSubtractionBtn').removeClass('d-none');
+
+    // Update the machine name heading
+    $('#machineNameHeading').text('Machine name: ' + machineName);
 }
 
 function goBackToMillFolders() {
-    updateFolderList(millFoldersWithRollIDs);
+
+    updateFolderList(millFoldersWithRollIDs, atervalid);
 }
 
 // Function to go back from images to machine folders
@@ -236,13 +305,20 @@ function goBack() {
 }
 
 function submitImages() {
+    var unmarkedImages = []; // Initialize the unmarkedImages array inside the function
+
     var anyImageSelected = Object.values(imageStates).some(function (state) {
         return state !== undefined;
     });
 
-    var allImagesMarked = currentImages.every(function (imageUrl) {
-        return imageStates[imageUrl] !== undefined;
-    });
+    var allImagesMarked = true;
+    for (var i = 0; i < currentImages.length; i++) {
+        var imageUrl = currentImages[i];
+        if (imageStates[imageUrl] === undefined) {
+            unmarkedImages.push(imageUrl); // Push unmarked image paths to the array
+            allImagesMarked = false;
+        }
+    }
 
     if (!anyImageSelected) {
         showErrorDialog("No images are selected for submission.");
@@ -251,6 +327,11 @@ function submitImages() {
 
     if (!allImagesMarked) {
         showErrorDialog("You must mark all images before submission.");
+        unmarked = true;
+        console.log(imageStates);
+        var i = sortUnmarkedImagesFirst(unmarkedImages, sortImages);
+        unMarkedimagestates = sortImageStates(imageStates, i);
+        showImages(unmarkedmillName, unmarkedMachineName, i);
         return;
     }
 
@@ -275,6 +356,44 @@ function submitImages() {
         }
     });
 }
+function sortUnmarkedImagesFirst(unmarkedImages, sortImages) {
+    // Separate unmarked images and the rest
+    var unmarked = [];
+    var rest = [];
+
+    sortImages.forEach(function (item) {
+        if (unmarkedImages.includes(item.imagepath)) {
+            unmarked.push(item);
+        } else {
+            rest.push(item);
+        }
+    });
+
+    // Concatenate the unmarked images at the beginning
+    var sortedImages = unmarked.concat(rest);
+
+    return sortedImages;
+}
+function sortImageStates(imageStates, sortedImages) {
+    let sortedImageStates = {};
+
+    // Iterate over the sorted images array
+    sortedImages.forEach(function (imageDataItem) {
+        let imagePath = imageDataItem.imagepath;
+        if (imageStates.hasOwnProperty(imagePath)) {
+            sortedImageStates[imagePath] = imageStates[imagePath];
+        }
+    });
+
+    // Include any remaining items in the original order, if they weren't in sortedImages
+    for (let imagePath in imageStates) {
+        if (!sortedImageStates.hasOwnProperty(imagePath)) {
+            sortedImageStates[imagePath] = imageStates[imagePath];
+        }
+    }
+
+    return sortedImageStates;
+}
 
 function showSecondaryDialog() {
     var tpCount = Object.values(imageStates).filter(function (state) {
@@ -287,20 +406,23 @@ function showSecondaryDialog() {
         return state === 'nmm';
     }).length;
 
-    var message = "Total TP count: " + tpCount + "<br>" +
-        "Total FP count: " + fpCount + "<br>" +
-        "Total NMM count: " + nmmCount + "<br>" +
-        "<input type='text' id='comment' placeholder='Enter your comment...' class='form-control mt-3'>";
+    var message = "<div style='margin-bottom: 10px;'><strong>Total:</strong> " + (tpCount + fpCount + nmmCount) + "</div>" +
+        "<div style='margin-bottom: 5px;'><strong>TP:</strong> " + tpCount + "</div>" +
+        "<div style='margin-bottom: 5px;'><strong>FP:</strong> " + fpCount + "</div>" +
+        "<div style='margin-bottom: 5px;'><strong>NMM:</strong> " + nmmCount + "</div><br>" +
+        "<textarea id='comment' placeholder='Enter your comment...' class='form-control mt-3'></textarea>";
 
     bootbox.dialog({
-        title: "Secondary Dialog",
+        title: "Show Details",
         message: message,
+        className: 'show-details-dialog',
         buttons: {
             submit: {
                 label: "Submit",
                 className: "btn-primary",
                 callback: function () {
                     var comment = $('#comment').val();
+
                     proceedWithSubmission();
                     $('#imageModal').modal('hide');
                 }
@@ -319,8 +441,18 @@ function proceedWithSubmission() {
 
     var countDetails = {};
 
+    allMachinenames.forEach(function (machineName) {
+        if (machineName == unmarkedMachineName) {
+            validateionMachineFolders[machineName] = "validated";
+        } else if (validateionMachineFolders[machineName] !== "validated") {
+            validateionMachineFolders[machineName] = "notvalidated";
+        }
+    });
+
     currentImages.forEach(function (imageUrl) {
         var state = imageStates[imageUrl];
+        var machineName = getMillMachineNameFromUrl(imageUrl);
+
         if (state !== undefined) {
             var millName = getMillNameFromUrl(imageUrl);
             var unitName = getMillUnitNameFromUrl(imageUrl);
@@ -341,7 +473,8 @@ function proceedWithSubmission() {
                 date: date,
                 count_details: [],
                 comment: comment,
-                validated: validated
+                validated: validateionMachineFolders[machineName],
+
             };
 
             if (!countDetails[label]) {
@@ -376,6 +509,8 @@ function proceedWithSubmission() {
         imageData.count_details = countDetailsArray;
     });
 
+
+
     submissionData.forEach(function (imageData) {
         $.ajax({
             type: "POST",
@@ -385,6 +520,9 @@ function proceedWithSubmission() {
             contentType: 'application/json',
             success: function (response) {
                 console.log(response);
+
+
+
             },
             error: function (xhr, status, error) {
                 console.error(xhr.responseText);
@@ -584,6 +722,7 @@ function goBack() {
                 $('#submitBtn').addClass('d-none');
                 $('#startSubtractionBtn').addClass('d-none');
                 $('#backToMillButton').removeClass('d-none'); // Show the back button for machine folders
+                $('#machineNameHeading').html('');
 
                 currentImages = [];
                 imageStates = {};
@@ -600,17 +739,24 @@ function gosubmitBack() {
     $('#folderTitle').html('');
     $('#submitBtn').addClass('d-none');
     $('#startSubtractionBtn').addClass('d-none');
-    $('#backToMillButton').removeClass('d-none'); // Show the back button for machine folders
+    $('#machineNameHeading').text('');
+    $('#machineNameHeading').html('');
 
     currentImages = [];
     imageStates = {};
     currentImageCoordinates = [];
+    sortImages = [];
+    unMarkedimagestates = {};
+    // unmarkedMachineName = "";
+    showMachines(mill, milldas);
+
 }
 
 function drawRectanglePlot(imageUrl, coordinates) {
 
     var img = new Image();
 
+    var defectName = imageUrl.split('/')[12];
     img.src = imageUrl;
 
     img.onload = function () {
@@ -633,10 +779,17 @@ function drawRectanglePlot(imageUrl, coordinates) {
         ctx.beginPath();
         ctx.rect(x1, y1, width, height);
 
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'white'; // Set border color to green
         ctx.stroke();
         ctx.closePath();
+
+        // Draw defect name like a price tag
+        ctx.font = '16px Arial';
+        ctx.fillStyle = 'green'; // Background for text
+        ctx.fillRect(x1, y1 - 20, ctx.measureText(defectName).width + 10, 20); // Green background for text
+        ctx.fillStyle = 'white';
+        ctx.fillText(defectName, x1 + 5, y1 - 5);
     };
 }
 
@@ -703,9 +856,14 @@ function openImageDialog(imageUrl, coordinates) {
     $('#editOptions, #editButton, #saveButton').hide();
 
     var parts = imageUrl.split('/');
+    var roll_id = parts[parts.length - 7];
+
+
     var label = parts[parts.length - 2];
 
     $('#imageLabel').text("Label: " + label);
+    $('#rollIdValue').text("Roll : " + roll_id);
+
     drawRectanglePlot(imageUrl, coordinates); // Draw rectangle for the selected image
     $('#imageCanvas').attr('src', imageUrl);
     $('#imageModal').modal('show');
