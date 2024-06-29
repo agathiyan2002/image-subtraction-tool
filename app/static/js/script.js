@@ -729,6 +729,9 @@ function goBack() {
                 currentImages = [];
                 imageStates = {};
                 currentImageCoordinates = [];
+                unMarkedimagestates = {};
+                sortImages = [];
+                unmarkedImages = [];
             }
         }
     });
@@ -749,6 +752,8 @@ function gosubmitBack() {
     currentImageCoordinates = [];
     sortImages = [];
     unMarkedimagestates = {};
+    sortImages = [];
+    unmarkedImages = [];
     // unmarkedMachineName = "";
     showMachines(mill, milldas);
 
@@ -781,8 +786,8 @@ function drawRectanglePlot(imageUrl, coordinates) {
         ctx.beginPath();
         ctx.rect(x1, y1, width, height);
 
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = 'white'; // Set border color to green
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'green'; // Set border color to green
         ctx.stroke();
         ctx.closePath();
 
