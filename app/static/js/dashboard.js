@@ -77,6 +77,32 @@ function fetchMillDetails() {
                     row.appendChild(cell);
                 }
 
+                // Adding the Download buttons (FP and TP) in the last column
+                var downloadCell = document.createElement('td');
+
+                var buttonContainer = document.createElement('div');
+                buttonContainer.classList.add('d-flex', 'flex-column', 'align-items-center'); // For vertical alignment and centering
+
+                var fpButton = document.createElement('button');
+                fpButton.classList.add('btn', 'btn-sm', 'btn-success', 'download-btn', 'mb-2'); // 'btn-success' for green color and 'mb-2' for margin-bottom
+                fpButton.innerHTML = '<i class="fa fa-download"></i> FP';
+                fpButton.addEventListener('click', function () {
+                    downloadFile(record, 'fp');
+                });
+
+                var tpButton = document.createElement('button');
+                tpButton.classList.add('btn', 'btn-sm', 'btn-danger', 'download-btn', 'mt-2'); // 'btn-danger' for red color and 'mt-2' for margin-top
+                tpButton.innerHTML = '<i class="fa fa-download"></i> TP';
+                tpButton.addEventListener('click', function () {
+                    downloadFile(record, 'tp');
+                });
+
+                buttonContainer.appendChild(fpButton);
+                buttonContainer.appendChild(tpButton);
+                downloadCell.appendChild(buttonContainer);
+                row.appendChild(downloadCell);
+
+
                 tableBody.appendChild(row);
 
             });
@@ -195,7 +221,7 @@ $(document).ready(function () {
     $('#dashboardTable').on('click', '.show-details-btn', function () {
         var index = $(this).closest('tr').index();
         var record = copyvalue[index];
-        console.log('more details Record:', record);
+         
 
         $('#moreDetailsTableBody').empty();
         for (var key = 10; key <= 21; key++) {
@@ -224,6 +250,64 @@ function generateSubTable(subTableData) {
         subTable += '</tr>';
     });
     subTable += '</tbody></table>';
-     
+
     return subTable;
 }
+
+
+function downloadFile(record, type) {
+    var selectedDate = $('#selectedDate').val();
+    var millName = record[0];
+    var machineName = record[1];
+
+    var postData = {
+        millname: millName,
+        machinename: machineName,
+        date: selectedDate,
+        status: type
+    };
+
+    $.ajax({
+        url: '/download_file',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(postData),
+        xhrFields: {
+            responseType: 'blob'
+        },
+        success: function (blob, status, xhr) {
+            if (status === 'success') {
+                var filename = xhr.getResponseHeader('Content-Disposition').split('filename=')[1];
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // After successfully downloading the file, clear the zip folder
+                $.ajax({
+                    url: '/clear_zip_folder',
+                    type: 'POST',
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            console.log("Zip folder cleared successfully");
+                        } else {
+                            console.log("Failed to clear zip folder: " + response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        var errorMessage = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Error: " + error;
+                        console.error("Failed to clear zip folder: " + errorMessage);
+                    }
+                });
+            }
+        },
+        error: function (xhr, status, error) {
+            var errorMessage = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Error: " + error;
+            alert(errorMessage);
+        }
+    });
+}
+
+

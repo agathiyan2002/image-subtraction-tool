@@ -27,6 +27,7 @@ var milldas = {};
 let validated = {};
 var mfwroll = [];
 var atervalid = {};
+var validated_folder = {};
 $(document).ready(function () {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
@@ -58,7 +59,7 @@ $(document).ready(function () {
 function showMillFolders() {
     validateionMachineFolders = {};
     currentImageCoordinates = [];
-
+    validated_folder = {};
     $('#folderNotFound').hide();
     gosubmitBack();
     $('#millFolders').html('');
@@ -76,7 +77,7 @@ function showMillFolders() {
             millFoldersWithRollIDs = response["all_mill_images"];
             validation_folder = response["validation_folder"];
             alert_message = response["alert_message"];
-            var validated_folder = response["validated_folder"];
+            validated_folder = response["validated_folder"];
 
             if (alert_message == "false") {
                 showErrorDialog("No records found for the selected date.");
@@ -120,7 +121,7 @@ function updateFolderList(millFoldersWithRollIDs, validated_folder) {
         if (validated_folder && validated_folder.hasOwnProperty(millName)) {
             try {
                 validated = validateionMachineFolders;
-                console.log("validated", validated);
+
                 validated = validated_folder[millName];
 
                 validateionMachineFolders = validated;
@@ -213,11 +214,11 @@ function showImages(millName, machineName, imageData) {
     unmarkedmillName = millName;
 
     unmarkedMachineName = machineName;
-    console.log("unmarkedMachineName", unmarkedMachineName);
+
     var imageList = "<div class='image-container'>";
 
     if (!unmarked) {
-        console.log("///");
+
         for (var rollNumber in imageData) {
             for (var date in imageData[rollNumber]) {
                 imageData[rollNumber][date].forEach(function (imageDataItem) {
@@ -247,7 +248,7 @@ function showImages(millName, machineName, imageData) {
         }
     } else {
 
-        console.log("$$$$$");
+
         imageData.forEach(function (imageDataItem) {
             var imageSrc = imageDataItem.imagepath;
             var coordinates = imageDataItem.coordinates;
@@ -328,7 +329,7 @@ function submitImages() {
     if (!allImagesMarked) {
         showErrorDialog("You must mark all images before submission.");
         unmarked = true;
-        console.log(imageStates);
+
         var i = sortUnmarkedImagesFirst(unmarkedImages, sortImages);
         unMarkedimagestates = sortImageStates(imageStates, i);
         showImages(unmarkedmillName, unmarkedMachineName, i);
@@ -462,6 +463,7 @@ function proceedWithSubmission() {
             var date = getDateFromUrl(imageUrl);
             var cameraName = getCameraNameFromUrl(imageUrl);
             var label = getLabelFromUrl(imageUrl);
+            validated_folder[millName] = validateionMachineFolders;
 
             var folderPath = validation_folder + millName + "/" + unitName + "/" + addname + "/" + machineName + "/" + rollNumber + "/" + date + "/" + cameraName + "/" + label + "/" + state;
 
@@ -875,7 +877,7 @@ function openImageDialog(imageUrl, coordinates) {
         var handleResponse = function (response) {
             if (editOptionValue === 'false_positive') {
                 currentImages = response.false_positive_image;
-                console.log("currentImages", currentImages);
+
             } else if (editOptionValue === 'true_positive') {
                 currentImages = response.true_positive_image.images;
                 currentImageCoordinates = response.true_positive_image.coordinates;
