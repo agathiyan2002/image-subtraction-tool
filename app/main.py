@@ -1,4 +1,6 @@
 import zipfile
+from src.log_parser import LogParser
+from src.uptime_db import DateRange
 from src.db import Database
 from src.db import Database
 from src.config import ConfigLoader
@@ -107,7 +109,7 @@ def dashboard():
 def index():
     config_loader = ConfigLoader()
     config = config_loader.config
-    destination_folder = os.path.join("static/", "temp")
+    destination_folder = os.path.join("app/static/", "temp")
     base_folder = config.get("base_folder")
     validation_folder = config.get("validation")
     db_instance = Database()
@@ -140,6 +142,9 @@ def index():
             return jsonify({"alert_message": alert_message})
         else:
             alert_message = "true"
+        print("+++++")
+        print(validated_folder)
+        print("+++++")
 
         return jsonify(
             {
@@ -171,6 +176,10 @@ def move_image():
         count_details = data["count_details"]  # Extract count_details data
         comment = data["comment"]  # Extract comment data
         validated = data["validated"]
+        print("millname", mill_name)
+        print("machinae_name", machine_name)
+        print("date", date)
+        print("validated", validated)
 
         source = base_folder + "knit-i" + source.replace("/static", "")
         update_key_path = "/".join(
@@ -343,6 +352,43 @@ def clear_zip_folder():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/uptime", methods=["GET", "POST"])
+def uptime():
+    if request.method == "POST":
+        start_date = request.form.get("start_date")
+        end_date = request.form.get("end_date")
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%dT%H:%M")
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%dT%H:%M")
+
+        date_range = DateRange(start_date, end_date)
+        uptime_status_data = date_range.fetch_uptime_status()
+
+        log_parser = LogParser()
+        t = log_parser.fetch_timestamps_with_status(start_date, end_date)
+        camstatus = date_range.fetch_camera_status()
+
+        for entry in camstatus:
+            if "voltcam_status" in entry:
+                print(entry["voltcam_status"])
+            else:
+                print("no voltcam status")
+
+        data = log_parser.parse_log(start_date, end_date)
+        for entry in data:
+            entry["timestamp"] = entry["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+
+        return jsonify(
+            {
+                "linechart": data,
+                "barchart": t,
+                "uptime": uptime_status_data,
+                "camstatus": camstatus,
+            }
+        )
+    else:
+        return render_template("uptime.html")
 
 
 if __name__ == "__main__":

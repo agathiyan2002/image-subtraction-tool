@@ -108,7 +108,6 @@ function showErrorDialog(message) {
 }
 
 function updateFolderList(millFoldersWithRollIDs, validated_folder) {
-
     atervalid = validated_folder;
     var folderList = "<div class='folder-grid'>";
     var allEmpty = true;
@@ -125,7 +124,10 @@ function updateFolderList(millFoldersWithRollIDs, validated_folder) {
                 validated = validated_folder[millName];
 
                 validateionMachineFolders = validated;
+                console.log("+++++", validated);
+
                 valid = Object.values(validated).every(v => v === "validated") ? "validated" : "notvalidated";
+                console.log("+++", valid);
                 validateIcon = (valid === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
             } catch (e) {
                 console.error("Error parsing JSON for millName:", millName, e);
@@ -210,9 +212,9 @@ function showMachines(millName, millData) {
 }
 
 function showImages(millName, machineName, imageData) {
-
     unmarkedmillName = millName;
-
+    console.log("machineName", machineName);
+    machineName = machineName.length === 3 ? `${machineName[0]}-${machineName.slice(1)}` : machineName;
     unmarkedMachineName = machineName;
 
     var imageList = "<div class='image-container'>";

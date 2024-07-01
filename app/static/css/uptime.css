@@ -1,0 +1,174 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.container,
+.container-fluid {
+    margin-top: 10px;
+}
+
+.align-self-end {
+    align-self: flex-end;
+}
+
+/* Custom styles for header */
+.custom-header {
+    background-color: #337ab7;    color: #fff;
+    padding: 5px 10px;
+    /* Further reduced padding to decrease height */
+    margin-bottom: 10px;
+    /* Reduced margin bottom */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    /* Professional box-shadow */
+    position: fixed;
+    /* Make the header fixed */
+    top: 0;
+    /* Position it at the top of the viewport */
+    width: 100%;
+    /* Make it span the full width of the viewport */
+    z-index: 1000;
+    /* Ensure it appears above other content */
+    border-bottom: 3px solid black;
+
+}
+
+
+.custom-header h1 {
+    margin: 0;
+    font-size: 1.2rem;
+    /* Reduced font size */
+}
+
+.form-label {
+    color: #fff;
+    font-weight: bold;
+    margin: 0;
+    /* Removed any additional margin */
+}
+
+.form-control {
+    border-radius: 5px;
+    border-color: #007bff;
+    padding: 10px;
+    /* Reduced padding inside input fields */
+}
+
+.btn-primary {
+    background-color: #fff;
+    border-color: #007bff;
+    color: #007bff;
+    border-radius: 5px;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    color: #fff;
+}
+
+/* CSS for adding black border to chart containers */
+.chart-container {
+    /* border: 1px solid black; */
+    margin-bottom: 20px;
+    /* Add some space between containers */
+}
+
+/* Styles for loading indicator */
+.loading-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loader {
+    border: 8px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 8px solid #3498db;
+    width: 60px;
+    height: 60px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    color: #fff;
+    font-size: 20px;
+    margin-top: 20px;
+}
+
+/* Custom grid layout for charts */
+.row {
+    display: flex;
+    gap: 20px;
+    margin-top: 100px;
+    /* Space between charts */
+}
+
+#leftSide {
+    flex: 1;
+    max-width: 35%;
+    overflow-x: hidden;
+    overflow-y: hidden;
+
+
+}
+
+.row {
+    display: none;
+    /* Hide the row containing the charts by default */
+}
+
+
+
+#rightSide {
+    flex: 1;
+    max-width: auto;
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    grid-template-rows: auto;
+    gap: 20px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#rightSide .chart-container {
+    width: 100%;
+    height: 100%;
+    /* border: 1px solid black; */
+    margin-bottom: 20px;
+    margin-top: 20px;
+    padding: 10px;
+}
+
+.chart-container h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.side-container {
+    flex: 1;
+    max-height: calc(100vh - 120px);
+    overflow-y: hidden;
+    padding-top: 20px;
+    /* Add padding to the top */
+}

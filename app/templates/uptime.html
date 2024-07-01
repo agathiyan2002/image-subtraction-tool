@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Form</title>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/uptime.css') }}" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Loading indicator -->
+    <div class="loading-indicator" id="loadingIndicator" style="display: none;">
+        <div class="loader"></div>
+        <p class="loading-text">Please wait...</p>
+    </div>
+
+    <!-- Add header using Bootstrap -->
+    <div class="custom-header">
+        <h1>Uptime & Performance</h1>
+        <div class="container">
+            <form id="dateForm" class="form-row">
+                <div class="col-md-3 mb-3">
+                    <label for="start_date" class="form-label">Start Date and Time:</label>
+                    <input type="datetime-local" class="form-control" id="start_date" name="start_date"
+                        placeholder="Start Date and Time" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="end_date" class="form-label">End Date and Time:</label>
+                    <input type="datetime-local" class="form-control" id="end_date" name="end_date"
+                        placeholder="End Date and Time" required>
+                </div>
+                <div class="col-md-3 mb-3 align-self-end">
+                    <button type="submit" class="btn btn-primary btn-block">Generate Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add a separate div for displaying the date -->
+    <div id="dateDisplay" class="container"></div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="side-container" id="leftSide">
+                <div class="chart-container" id="temperatureContainer">
+                    <h5>Temperature</h5>
+                    <div id="temperatureChart"></div>
+                </div>
+                <div class="chart-container" id="cpuContainer">
+                    <h5>CPU</h5>
+                    <div id="cpuChart"></div>
+                </div>
+                <div class="chart-container" id="gpuContainer">
+                    <h5>GPU</h5>
+                    <div id="gpuChart"></div>
+                </div>
+                <div class="chart-container" id="memoryContainer">
+                    <h5>Memory</h5>
+                    <div id="memoryChart"></div>
+                </div>
+            </div>
+            <div class="side-container" id="rightSide">
+                <div class="chart-container" id="scatterChartContainer">
+                    <div id="scatterChart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+
+
+</body>
+
+</html>

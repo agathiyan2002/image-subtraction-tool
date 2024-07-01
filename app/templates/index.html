@@ -34,40 +34,29 @@
                 </div>
                 <div class="col-auto">
                     <div class="row justify-content-end pr-4">
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-link text-white mr-3 dashboard-link"
-                            target="_blank">
-                            <!-- Change text color to white -->
-                            <i class="fas fa-user mr-1 text-white"></i> Dashboard <!-- Change icon color to white -->
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-link text-white mr-3 dashboard-link" target="_blank">
+                            <div class="icon">
+                                <i class="fas fa-user text-white"></i>
+                            </div>
+                            <div class="text">
+                                Dashboard
+                            </div>
+                        </a>
+                    
+                        <a href="{{ url_for('uptime') }}" class="btn btn-link text-white mr-3 dashboard-link" target="_blank">
+                            <div class="icon">
+                                <i class="fas fa-chart-line text-white"></i>
+                            </div>
+                            <div class="text">
+                                Uptime & Performance
+                            </div>
                         </a>
                     </div>
-
+                    
                 </div>
             </div>
         </div>
     </header>
-
-
-    <div id="qualityCheckingFrame" class="d-none">
-        <div class="d-flex justify-content-between">
-
-            <button id="backButtonQuaty" class="btn btn-outline-secondary back-button"
-                onclick="hideQualityCheckingFrame()">
-                <i class="fas fa-arrow-left"></i> Back
-            </button>
-
-            <!-- Save button -->
-            <button id="saveButton" class="btn btn-outline-secondary back-button" onclick="showSecondaryDialog()">
-                <i class="far fa-save"></i> Save
-            </button>
-        </div>
-
-        <!-- Content for quality checking frame -->
-        <h2 id="qualityCheckingHeading">Quality Checking</h2>
-    </div>
-
-
-
-
 
 
     <div id="loadingSpinner" class="spinner-border text-primary ml-2" role="status" style="display: none;">
