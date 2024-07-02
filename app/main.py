@@ -140,7 +140,9 @@ def index():
             return jsonify({"alert_message": alert_message})
         else:
             alert_message = "true"
-
+        print("++++++++++")
+        print(validated_folder)
+        print("++++++++++")
         return jsonify(
             {
                 "all_mill_images": all_images,
@@ -158,7 +160,6 @@ def move_image():
     db_instance = Database()
     config_loader = ConfigLoader()
     config = config_loader.config
-    validation_folder = config.get("validation")
     base_folder = config.get("base_folder")
 
     try:
@@ -189,7 +190,7 @@ def move_image():
             )
 
             db_instance.fetch_all_databases_data(date)
-            image_counter = ImageCounter(validation_folder, db_connection_string)
+            image_counter = ImageCounter(db_connection_string)
             image_counter.insert_into_db(
                 mill_name,
                 machine_name,
@@ -343,6 +344,35 @@ def clear_zip_folder():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/process-machine-data", methods=["POST"])
+def process_machine_data():
+    try:
+        db_instance = Database()
+
+        data = request.json
+        current_mill_name = data.get("current_mill_name")
+        all_machine_names = data.get("all_machine_names")
+        formatted_date = data.get("formatted_date")
+
+
+ 
+        db_connection_string = (
+            "dbname='main' user='postgres' host='localhost' password='55555'"
+        )
+
+        db_instance.fetch_all_databases_data(formatted_date)
+        image_counter = ImageCounter(db_connection_string)
+        image_counter.insert_multiple_machines_into_db(
+            current_mill_name, all_machine_names, formatted_date
+        )
+
+        return "Machine data processed successfully", 200
+
+    except Exception as e:
+        print("Error:", e)
+        return str(e), 500
 
 
 if __name__ == "__main__":

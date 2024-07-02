@@ -22,12 +22,15 @@ var unmarkedmillName = "";
 var unmarkedMachineName = "";
 var validateionMachineFolders = {};
 var allMachinenames = [];
+var currectmillnames = "";
 var mill = "";
 var milldas = {};
 let validated = {};
 var mfwroll = [];
 var atervalid = {};
 var validated_folder = {};
+var formattedDate = "";
+ 
 $(document).ready(function () {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
@@ -65,7 +68,7 @@ function showMillFolders() {
     $('#millFolders').html('');
     $('#folderTitle').html('');
     var selectedDate = $('.datepicker').datepicker('getDate');
-    var formattedDate = selectedDate.getFullYear() + "-" + (selectedDate.getMonth() + 1) + "-" + selectedDate.getDate();
+    formattedDate = selectedDate.getFullYear() + "-" + (selectedDate.getMonth() + 1) + "-" + selectedDate.getDate();
 
     $('#loadingSpinner').show();
 
@@ -108,7 +111,9 @@ function showErrorDialog(message) {
 }
 
 function updateFolderList(millFoldersWithRollIDs, validated_folder) {
-
+    allMachinenames = [];
+    currectmillnames = "";
+   
     atervalid = validated_folder;
     var folderList = "<div class='folder-grid'>";
     var allEmpty = true;
@@ -121,9 +126,9 @@ function updateFolderList(millFoldersWithRollIDs, validated_folder) {
         if (validated_folder && validated_folder.hasOwnProperty(millName)) {
             try {
                 validated = validateionMachineFolders;
-
+                console.log("millName", millName);
                 validated = validated_folder[millName];
-
+                console.log("validated", validated);
                 validateionMachineFolders = validated;
                 valid = Object.values(validated).every(v => v === "validated") ? "validated" : "notvalidated";
                 validateIcon = (valid === 'validated') ? "<i class='fas fa-check-circle'></i>" : "";
@@ -176,10 +181,11 @@ function showMachines(millName, millData) {
     folderList += "<div class='folder-grid'>";
 
     for (var machineName in millData) {
-        allMachinenames.push(machineName.toString()); // Ensure machine names are strings
+        allMachinenames.push(machineName.toString());
+        currectmillnames = millName;
 
         if (millData.hasOwnProperty(machineName)) {
-
+        
             for (let machineName in validateionMachineFolders) {
                 if (validateionMachineFolders.hasOwnProperty(machineName)) {
                     let status = validateionMachineFolders[machineName];
@@ -212,8 +218,8 @@ function showMachines(millName, millData) {
 function showImages(millName, machineName, imageData) {
 
     unmarkedmillName = millName;
-
     unmarkedMachineName = machineName;
+    machineName = machineName.length === 3 ? `${machineName[0]}-${machineName.slice(1)}` : machineName;
 
     var imageList = "<div class='image-container'>";
 
@@ -449,7 +455,8 @@ function proceedWithSubmission() {
             validateionMachineFolders[machineName] = "notvalidated";
         }
     });
-
+    console.log("validateionMachineFolders", validateionMachineFolders);
+   
     currentImages.forEach(function (imageUrl) {
         var state = imageStates[imageUrl];
         var machineName = getMillMachineNameFromUrl(imageUrl);
@@ -512,6 +519,7 @@ function proceedWithSubmission() {
     });
 
 
+    sendMachineData(currectmillnames, allMachinenames, formattedDate);
 
     submissionData.forEach(function (imageData) {
         $.ajax({
@@ -522,9 +530,6 @@ function proceedWithSubmission() {
             contentType: 'application/json',
             success: function (response) {
                 console.log(response);
-
-
-
             },
             error: function (xhr, status, error) {
                 console.error(xhr.responseText);
@@ -755,6 +760,9 @@ function gosubmitBack() {
     sortImages = [];
     unmarkedImages = [];
     // unmarkedMachineName = "";
+    allMachinenames = [];
+    currectmillnames = "";
+   
     showMachines(mill, milldas);
 
 }
@@ -920,3 +928,26 @@ function openImageDialog(imageUrl, coordinates) {
 
 }
 
+
+function sendMachineData(currentMillName, allMachineNames, formattedDate) {
+ 
+
+    var data = {
+        current_mill_name: currentMillName,
+        all_machine_names: allMachineNames,
+        formatted_date: formattedDate
+    };
+
+    $.ajax({
+        url: "/process-machine-data",
+        type: 'POST',
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        success: function (response) {
+            console.log('Data processed successfully:', response);
+        },
+        error: function (xhr, status, error) {
+            console.error('Error processing data:', error);
+        }
+    });
+}

@@ -439,7 +439,10 @@ class Database:
             folder_data = self.execute.select(
                 self.destination_db_config, query, (selected_date,)
             )
-          
+            print("+++++++++++++++")
+            print(folder_data)
+            print("+++++++++++++++")
+
             return folder_data
         except psycopg2.Error as e:
             print("Error fetching folder validation data:", e)

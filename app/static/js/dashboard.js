@@ -76,34 +76,46 @@ function fetchMillDetails() {
                     }
                     row.appendChild(cell);
                 }
-
-                // Adding the Download buttons (FP and TP) in the last column
+                // Adding the Download buttons (FP, TP, and NMM) in the last column
                 var downloadCell = document.createElement('td');
 
                 var buttonContainer = document.createElement('div');
                 buttonContainer.classList.add('d-flex', 'flex-column', 'align-items-center'); // For vertical alignment and centering
 
-                var fpButton = document.createElement('button');
-                fpButton.classList.add('btn', 'btn-sm', 'btn-success', 'download-btn', 'mb-2'); // 'btn-success' for green color and 'mb-2' for margin-bottom
-                fpButton.innerHTML = '<i class="fa fa-download"></i> FP';
-                fpButton.addEventListener('click', function () {
-                    downloadFile(record, 'fp');
-                });
-
-                var tpButton = document.createElement('button');
-                tpButton.classList.add('btn', 'btn-sm', 'btn-danger', 'download-btn', 'mt-2'); // 'btn-danger' for red color and 'mt-2' for margin-top
-                tpButton.innerHTML = '<i class="fa fa-download"></i> TP';
-                tpButton.addEventListener('click', function () {
-                    downloadFile(record, 'tp');
-                });
+                var fpButton = createButton('FP', 'btn-danger', 'mb-2'); // Red color for FP
+                var tpButton = createButton('TP', 'btn-success', 'my-2'); // Green color for TP
+                var nmmButton = createButton('NMM', 'btn-primary', 'mt-2'); // Blue color for NMM
 
                 buttonContainer.appendChild(fpButton);
                 buttonContainer.appendChild(tpButton);
+                buttonContainer.appendChild(nmmButton);
                 downloadCell.appendChild(buttonContainer);
+
+                // Adding the downloadCell to the row
                 row.appendChild(downloadCell);
-
-
                 tableBody.appendChild(row);
+
+                function createButton(label, colorClass, marginClass) {
+                    var button = document.createElement('button');
+                    button.textContent = label;
+                    button.classList.add('btn', 'btn-sm', 'download-btn', colorClass, marginClass);
+
+                    // Set the same width for all buttons
+                    button.style.width = '120px'; // Adjust width as needed
+
+                    var icon = document.createElement('i');
+                    icon.classList.add('fas', 'fa-download', 'mr-1'); // Adjust margin-right as needed
+                    icon.style.paddingRight = '5px'; // Adjust padding between icon and text
+
+                    button.prepend(icon); // Prepend icon before text
+
+                    button.addEventListener('click', function () {
+                        downloadFile(record, label.toLowerCase());
+                    });
+
+                    return button;
+                }
+
 
             });
         },
@@ -221,7 +233,7 @@ $(document).ready(function () {
     $('#dashboardTable').on('click', '.show-details-btn', function () {
         var index = $(this).closest('tr').index();
         var record = copyvalue[index];
-         
+
 
         $('#moreDetailsTableBody').empty();
         for (var key = 10; key <= 21; key++) {

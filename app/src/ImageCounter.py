@@ -3,8 +3,7 @@ from collections import defaultdict
 
 
 class ImageCounter:
-    def __init__(self, validation_folder, db_connection_string):
-        self.validation_folder = validation_folder
+    def __init__(self, db_connection_string):
         self.db_connection_string = db_connection_string
 
     def insert_into_db(
@@ -54,6 +53,34 @@ class ImageCounter:
                         count_details_json,  # Store count_details as JSON string
                         comment,
                         validateionMachineFolders,
+                    ),
+                )
+
+            conn.commit()
+            print("Data inserted successfully into the database.")
+
+        except psycopg2.Error as e:
+            print("Error inserting data into the database:", e)
+
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()
+
+    def insert_multiple_machines_into_db(
+        self, current_mill_name, all_machine_names, formatted_date
+    ):
+        try:
+            conn = psycopg2.connect(self.db_connection_string)
+            cursor = conn.cursor()
+
+            for machine_name in all_machine_names:
+                cursor.execute(
+                    "INSERT INTO mill_details (mill_name, machine_name, date) VALUES (%s, %s, %s)",
+                    (
+                        current_mill_name,
+                        machine_name,
+                        formatted_date,
                     ),
                 )
 
